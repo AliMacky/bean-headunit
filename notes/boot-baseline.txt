@@ -1,0 +1,60 @@
+Startup finished in 2.307s (kernel) + 21.728s (userspace) = 24.036s 
+multi-user.target reached after 15.578s in userspace.
+7.969s NetworkManager.service
+5.959s NetworkManager-wait-online.service
+2.153s cloud-init-main.service
+1.257s e2scrub_reap.service
+1.205s rpi-resize-swap-file.service
+1.136s rpi-eeprom-update.service
+1.125s dev-mmcblk0p2.device
+ 992ms systemd-fsck@dev-disk-by\x2dpartuuid-2d731b0e\x2d01.service
+ 444ms user@1000.service
+ 420ms cloud-init-local.service
+ 306ms systemd-zram-setup@zram0.service
+ 282ms bluetooth.service
+ 277ms avahi-daemon.service
+ 256ms systemd-udev-trigger.service
+ 245ms wpa_supplicant.service
+ 231ms keyboard-setup.service
+ 230ms run-lock.mount
+ 228ms sys-kernel-debug.mount
+ 227ms sys-kernel-tracing.mount
+ 226ms dev-mqueue.mount
+ 211ms modprobe@drm.service
+ 208ms dbus.service
+ 207ms kmod-static-nodes.service
+ 205ms modprobe@configfs.service
+ 199ms systemd-journald.service
+ 198ms modprobe@fuse.service
+ 194ms rpi-setup-loop@var-swap.service
+ 193ms cloud-final.service
+ 179ms ssh.service
+ 168ms systemd-udevd.service
+ 162ms systemd-modules-load.service
+ 158ms cloud-config.service
+ 150ms cloud-init-network.service
+ 149ms systemd-remount-fs.service
+ 141ms systemd-logind.service
+ 137ms systemd-hostnamed.service
+ 136ms systemd-timesyncd.service
+ 131ms systemd-binfmt.service
+ 129ms systemd-rfkill.service
+ 125ms sshswitch.service
+ 124ms systemd-udev-load-credentials.service
+ 117ms alsa-restore.service
+ 116ms sys-kernel-config.mount
+ 113ms sys-fs-fuse-connections.mount
+ 110ms systemd-tmpfiles-setup.service
+ 107ms systemd-sysctl.service
+  98ms systemd-tmpfiles-setup-dev-early.service
+  95ms systemd-journal-flush.service
+  92ms dev-zram0.swap
+  89ms systemd-random-seed.service
+  68ms proc-sys-fs-binfmt_misc.mount
+  64ms console-setup.service
+  63ms systemd-tmpfiles-setup-dev.service
+  63ms boot-firmware.mount
+  48ms systemd-user-sessions.service
+  47ms modprobe@efi_pstore.service
+  36ms tmp.mount
+  32ms user-runtime-dir@1000.service
