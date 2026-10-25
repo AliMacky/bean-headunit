@@ -164,10 +164,23 @@ TAILLIGHT = [(60, 712), (66, 680), (80, 656), (100, 642), (122, 640), (136, 652)
 TAILLIGHT_CENTER = (100, 694)
 HEADLIGHT = [(1878, 710), (1926, 724), (1944, 770), (1904, 766)]
 EXHAUST = (60, 888)
+# Exhaust vapor puffs: each is a few marks (offset x, offset y, how long it
+# lasts as a share of the puff's life). Fixed, so the puffs keep their shape.
+_vr = random.Random(5)
+EXHAUST_PUFFS = [[(0, 0, 1.0), (0.8, -0.2, 0.9), (-0.8, 0.1, 0.85)] +
+                 [(_vr.uniform(-1.2, 1.2), _vr.uniform(-1.1, 0.7), _vr.uniform(0.5, 0.95)) for _ in range(6)]
+                 for _ in range(3)]
 
 
-def car_layers(width_px, wheel_angle):
-    """Draw the car `width_px` wide. Returns (body, silhouette mask, taillight)."""
+HANDLE = ((760, 688), (866, 718))   # door handle box
+
+
+def car_layers(width_px, wheel_angle, handle=True):
+    """Draw the car `width_px` wide. Returns (body, silhouette mask, taillight).
+
+    handle=False leaves the door handle off, for the console car, which draws
+    it as fixed characters instead (see handle_cells).
+    """
     k = width_px / (X1 - X0)
     h = int((GROUND + 6 - Y0) * k)
     img = Image.new("L", (width_px, h), 0)
@@ -207,7 +220,8 @@ def car_layers(width_px, wheel_angle):
     lw = W(9)
     d.line([P(706, 636), P(712, 760), P(745, 880), P(790, 920), P(1320, 922),
             P(1348, 870), P(1352, 650)], fill=0, width=lw, joint="curve")   # door
-    d.rounded_rectangle([P(760, 688), P(866, 718)], radius=10 * k, fill=0)  # handle
+    if handle:
+        d.rounded_rectangle([P(*HANDLE[0]), P(*HANDLE[1])], radius=10 * k, fill=0)
     d.line([P(640, 945), P(1430, 945)], fill=0, width=lw)                     # sill
     d.line([P(112, 612), P(440, 592)], fill=0, width=W(7))                    # trunk
     d.rounded_rectangle([P(128, 796), P(204, 822)], radius=8 * k, fill=0)     # rear marker
@@ -495,6 +509,11 @@ def ascii_car(matcher, body, mask, tail, c0, r0, ncols, nrows, tail_color):
     for r in range(nrows):
         for c in range(ncols):
             ch = chars.get((c, r), " ")
+            # One edge that lands right on a cell boundary gets matched twice:
+            # as _ at the bottom of the cell above and ` at the top of this
+            # one, which reads as a thin gap. Keep only the upper half.
+            if ch in "`'" and chars.get((c, r - 1), " ") in "_.,":
+                ch = " "
             is_tail = tail_cov[r, c] > 0.25
             if is_tail:
                 out[(c0 + c, r0 + r)] = (ch if ch != " " else "#", tail_color)
@@ -505,6 +524,31 @@ def ascii_car(matcher, body, mask, tail, c0, r0, ncols, nrows, tail_color):
             elif mask_cov[r, c] > 0.2:
                 out[(c0 + c, r0 + r)] = (" ", C_DEFAULT)       # glass, gaps
     return out
+
+
+def handle_cells(width_px, height_px, pitch, c0, r0, oy):
+    """The door handle as fixed characters, e.g. [====].
+
+    It's only about one character tall, so matching its outline to characters
+    gave a different jumble of _ , = every time the car moved or tilted.
+    Drawing it as a set string keeps it steady; only its position follows the
+    car (including the nose dive when braking).
+    """
+    k = width_px / (X1 - X0)
+    (hx0, hy0), (hx1, hy1) = HANDLE
+    x = ((hx0 + hx1) / 2 - X0) * k
+    y = ((hy0 + hy1) / 2 - Y0 + DROP) * k
+    if pitch:
+        px, py = width_px * 0.5, height_px
+        a = math.radians(pitch)
+        dx, dy = x - px, y - py
+        x = px + dx * math.cos(a) + dy * math.sin(a)
+        y = py - dx * math.sin(a) + dy * math.cos(a)
+    n = max(3, int(round((hx1 - hx0) * k / GLYPH_W)))
+    text = "[" + "=" * (n - 2) + "]"
+    col = c0 + int(round(x / GLYPH_W - n / 2))
+    row = r0 + int((y + oy) // GLYPH_H)
+    return {(col + i, row): (ch, C_WHITE) for i, ch in enumerate(text)}
 
 
 def ascii_solid(matcher, image, c0, r0, ncols, nrows, color, min_cover=0.15):
@@ -718,7 +762,7 @@ def render(style, car_chars, console_car="ascii"):
         sprite = {}
         if ascii_mode:
             # Car at 8x16 per cell, matched to characters.
-            hb, hm, ht = car_layers(cw * GLYPH_W, angle)
+            hb, hm, ht = car_layers(cw * GLYPH_W, angle, handle=False)
             if pitch:
                 pivot = (cw * GLYPH_W * 0.5, hb.height)
                 hb, hm, ht = (x.rotate(pitch, resample=Image.BICUBIC, center=pivot) for x in (hb, hm, ht))
@@ -730,6 +774,7 @@ def render(style, car_chars, console_car="ascii"):
             for cv, src in zip(canv, (hb, hm, ht)):
                 cv.paste(src, (0, oy))
             sprite.update(ascii_car(car_matcher, canv[0], canv[1], canv[2], c0, r0, ncols, nrows, tail_color))
+            sprite.update(handle_cells(cw * GLYPH_W, hb.height, pitch, c0, r0, oy))
             if tn > 0:
                 nl = int(round(nx))
                 nc0, nr0 = nl, name_top // 2
@@ -883,6 +928,39 @@ def render(style, car_chars, console_car="ascii"):
                     ch = DUST_CHARS[int(hashf(c + wshift, r, 78) * len(DUST_CHARS))]
                     glow = braking > 0.2 and math.hypot(c * ppc[0] - tx, (r * ppc[1] - ty) * 1.3) < cw * 0.14
                     overlay[(c, r)] = (ch, C_RED if glow else C_GRAY)
+
+        # exhaust vapor: once he's parked, puffs roll out of the tailpipe into
+        # the cold night air, drift back, rise and thin out. Each puff lives
+        # exactly LOOP_S, so the idle loop stays seamless.
+        vapor = smooth((t - T_STOP - 0.4) / 0.8)
+        if vapor > 0:
+            ex, ey = P(*EXHAUST, L)
+            ex, ey = ex / ppc[0], ey / ppc[1]
+            reach = car_chars * 0.2                   # how far back a puff drifts, in cells
+            for n, puff in enumerate(EXHAUST_PUFFS):
+                p = ((t / LOOP_S) + n / len(EXHAUST_PUFFS)) % 1.0
+                if p > vapor:                         # fade in by starting puffs one at a time
+                    continue
+                grow = 0.3 + 2.6 * p
+                cx = ex - 1 - reach * (1 - (1 - p) ** 2)
+                cy = ey - 0.3 - 3.5 * p * p + 0.4 * math.sin(2 * math.pi * p + n)
+                # The fresh, thick part of a puff hides the scenery behind it.
+                if p < 0.6:
+                    rx, ry = 1.0 + grow * 1.8, 0.5 + grow * 0.7
+                    for r in range(int(cy - ry), int(cy + ry) + 1):
+                        for c in range(int(cx - rx), int(cx + rx) + 1):
+                            if ((c - cx) / rx) ** 2 + ((r - cy) / ry) ** 2 <= 1:
+                                overlay.pop((c, r), None)
+                for dx, dy, life in puff:
+                    if p > life:
+                        continue
+                    c = int(round(cx + dx * grow * 1.8))
+                    r = int(round(cy + dy * grow))
+                    q = p / life
+                    ch = "o" if q < 0.2 else ("O" if q < 0.45 else ("()"[(c + r) % 2] if q < 0.65
+                                                                      else ("~" if q < 0.82 else ".")))
+                    if 0 <= c < cols and 0 <= r < rows:
+                        overlay[(c, r)] = (ch, C_WHITE if q < 0.45 else C_GRAY)
 
         for cell in car_cells:
             overlay.pop(cell, None)

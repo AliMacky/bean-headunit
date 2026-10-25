@@ -2,22 +2,30 @@
 """Preview the whole screen exactly as the Pi's console will show it.
 
   pip3 install pyte pillow
-  python3 preview_screen.py screen.gif [columns rows]
+  python3 preview_screen.py screen.gif                  full screen, 30 fps
+  python3 preview_screen.py screen.gif --size 160x45    a smaller screen
+  python3 preview_screen.py splash-preview-screen.gif --fps 15   the README GIF
 
 Runs the real splash.py against an emulated Linux console (default 240x67,
 what a 1080p screen gives you), so the sky, layout, tagline and colors are
-the same as on the Pi. Also saves a still of the idle scene as screen.png.
+the same as on the Pi. Also saves a still of the idle scene next to the GIF
+(screen.png). --fps 15 halves the file size, which is what the README uses.
 """
-import os, sys
+import argparse, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 os.environ.update(TERM="linux", SPLASH_WAIT_MAX="0", SPLASH_PREROLL="0", SPLASH_ONCE="")
 import pyte
 from PIL import Image, ImageDraw, ImageFont
 import splash
 
-if len(sys.argv) < 2:
-    sys.exit(__doc__)
-COLS, ROWS = (int(sys.argv[2]), int(sys.argv[3])) if len(sys.argv) > 3 else (240, 67)
+ap = argparse.ArgumentParser(description="Preview the splash as the Pi's console shows it.")
+ap.add_argument("out", help="GIF to write (.gif is added if missing)")
+ap.add_argument("--size", default="240x67", help="console size in characters, COLSxROWS")
+ap.add_argument("--fps", type=int, default=30, choices=(30, 15, 10), help="GIF frame rate")
+args = ap.parse_args()
+OUT = args.out if args.out.lower().endswith(".gif") else args.out + ".gif"
+COLS, ROWS = (int(v) for v in args.size.lower().split("x"))
+STEP = 30 // args.fps
 CW, CH = 6, 12   # pixels per character in the GIF
 scr = pyte.Screen(COLS, ROWS); stream = pyte.Stream(scr)
 class Out:
@@ -31,7 +39,22 @@ BASE = {"black": (0,0,0), "red": (170,0,0), "green": (0,170,0), "brown": (170,85
         "blue": (0,0,170), "magenta": (170,0,170), "cyan": (0,170,170), "white": (170,170,170), "default": (170,170,170)}
 BRIGHT = {"black": (85,85,85), "red": (255,85,85), "green": (85,255,85), "brown": (255,255,85),
           "blue": (85,85,255), "magenta": (255,85,255), "cyan": (85,255,255), "white": (255,255,255), "default": (255,255,255)}
-font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", int(CH * 0.85))
+FONT_PATHS = ["/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",   # Linux / Pi
+              "/System/Library/Fonts/Menlo.ttc",                       # macOS
+              "/System/Library/Fonts/Monaco.ttf",
+              "C:/Windows/Fonts/consola.ttf"]                          # Windows
+
+
+def load_font(size):
+    for path in FONT_PATHS:
+        try:
+            return ImageFont.truetype(path, size)
+        except OSError:
+            continue
+    return ImageFont.load_default()
+
+
+font = load_font(int(CH * 0.85))
 imgs = []
 def snap():
     im = Image.new("RGB", (COLS * CW, ROWS * CH)); d = ImageDraw.Draw(im)
@@ -61,6 +84,8 @@ def tagline(self):
 splash.Screen.tagline = tagline
 try: splash.main()
 except KeyboardInterrupt: pass
-imgs[0].save(sys.argv[1], save_all=True, append_images=imgs[1:], duration=33, loop=0, optimize=True)
-imgs[int(len(imgs)*0.8)].save(sys.argv[1].replace(".gif", ".png"))
-print(len(imgs), os.path.getsize(sys.argv[1]) // 1024, "KB")
+still = imgs[int(len(imgs) * 0.8)]
+imgs = imgs[::STEP]
+imgs[0].save(OUT, save_all=True, append_images=imgs[1:], duration=round(1000 * STEP / 30), loop=0, optimize=True)
+still.save(OUT[:-4] + ".png")
+print(f"wrote {OUT} ({len(imgs)} frames, {os.path.getsize(OUT) // 1024} KB) and {OUT[:-4]}.png")
