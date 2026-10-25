@@ -1,0 +1,22 @@
+Startup finished in 1.398s (kernel) + 3.361s (userspace) = 4.760s 
+multi-user.target reached after 3.361s in userspace.
+1.137s NetworkManager.service
+ 385ms rpi-resize-swap-file.service
+ 355ms dev-mmcblk0p2.device
+ 343ms systemd-fsck@dev-disk-by\x2dpartuuid-e588093d\x2d01.service
+ 259ms rpi-setup-loop@var-swap.service
+ 175ms user@1000.service
+ 137ms ssh.service
+ 121ms systemd-udev-trigger.service
+ 114ms keyboard-setup.service
+ 107ms systemd-journald.service
+ 102ms avahi-daemon.service
+  99ms bluetooth.service
+  91ms wpa_supplicant.service
+  84ms dbus.service
+  75ms systemd-timesyncd.service
+  73ms systemd-tmpfiles-setup-dev-early.service
+  70ms sshswitch.service
+  65ms systemd-remount-fs.service
+  59ms systemd-logind.service
+  58ms systemd-udevd.service

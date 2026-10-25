@@ -1,0 +1,22 @@
+Startup finished in 1.252s (kernel) + 13.524s (userspace) = 14.776s 
+multi-user.target reached after 7.471s in userspace.
+5.975s NetworkManager-wait-online.service
+2.990s NetworkManager.service
+ 685ms cloud-init-main.service
+ 573ms dev-mmcblk0p2.device
+ 495ms e2scrub_reap.service
+ 464ms rpi-resize-swap-file.service
+ 383ms systemd-fsck@dev-disk-by\x2dpartuuid-e588093d\x2d01.service
+ 341ms rpi-eeprom-update.service
+ 235ms systemd-journald.service
+ 220ms rpi-setup-loop@var-swap.service
+ 199ms user@1000.service
+ 183ms cloud-init-local.service
+ 153ms run-lock.mount
+ 153ms dev-mqueue.mount
+ 153ms sys-kernel-debug.mount
+ 151ms systemd-udev-trigger.service
+ 150ms sys-kernel-tracing.mount
+ 149ms keyboard-setup.service
+ 143ms kmod-static-nodes.service
+ 143ms modprobe@configfs.service

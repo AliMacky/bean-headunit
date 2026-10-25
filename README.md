@@ -10,7 +10,7 @@ So far the project is a stripped-down Raspberry Pi OS install and a custom boot 
 
 ## Where it's at
 
-- [x] Pi OS Lite set up and trimmed for faster boot (23.5 s down to 15.3 s)
+- [x] Pi OS Lite set up and trimmed for faster boot (4.8 s on the Pi 5, down from 23.5 s on a fresh Pi 4)
 - [x] Boot splash: an ASCII animation of the car that plays from early in boot
 - [ ] CarPlay through a USB CarPlay dongle, first with react-carplay, then a native client
 - [ ] OBD2 over USB for engine codes and live data
@@ -18,18 +18,27 @@ So far the project is a stripped-down Raspberry Pi OS install and a custom boot 
 - [ ] Car power handling: ignition sense, safe shutdown, read-only root filesystem
 - [ ] Later: an ESP32 with its own sensors for data OBD can't give
 
-I'm building it on a Pi 4 at my desk first. The final unit will probably be a Pi 5.
+I started on a Pi 4 and moved to a Pi 5 running Raspberry Pi OS Trixie, which is what the final unit will use. For now it sits on my desk hooked up to a 1440p monitor until I pick the screen for the car.
 
 ## Boot time
 
-Measured with `systemd-analyze` on a Pi 4 with a microSD card. The raw output for each step is in [`notes/`](notes/).
+Measured with `systemd-analyze`, booting from a microSD card. The Pi 4 ran Bookworm and the Pi 5 runs Trixie, with the same services turned off on both. The raw output for each step is in [`notes/`](notes/).
 
-| Step | Kernel | Userspace | Total |
-| --- | --- | --- | --- |
-| Fresh Pi OS Lite | 2.3 s | 21.2 s | 23.5 s |
-| Unneeded services turned off | 2.3 s | 13.0 s | 15.3 s |
+| Pi | Step | Kernel | Userspace | Total |
+| --- | --- | --- | --- | --- |
+| Pi 4 | Fresh Pi OS Lite | 2.3 s | 21.2 s | 23.5 s |
+| Pi 4 | Unneeded services turned off | 2.3 s | 13.0 s | 15.3 s |
+| Pi 5 | Fresh Pi OS Lite | 1.3 s | 13.5 s | 14.8 s |
+| Pi 5 | Unneeded services turned off | 1.4 s | 3.4 s | 4.8 s |
 
-Most of what's left is NetworkManager connecting to Wi-Fi, which nothing on screen waits for. The splash starts as soon as the filesystems are mounted, well before that.
+On the Pi 4, most of what was left was NetworkManager connecting to Wi-Fi, which nothing on screen waits for. On the Pi 5 that takes about 1.1 s, and the whole userspace boot fits in 3.4 s. Either way, the splash starts as soon as the filesystems are mounted, before the network is up.
+
+`systemd-analyze` only starts counting once the kernel is running, so it misses the firmware and bootloader, and the time the monitor takes to wake up. What actually matters in a car is the time from turning the key to seeing the car on screen, so I also time that with a stopwatch from plugging in power:
+
+| Pi | Until the animation starts |
+| --- | --- |
+| Pi 4, 1080p monitor | about 21 s |
+| Pi 5, 1440p monitor | 7 to 10 s |
 
 ## What's in here
 
@@ -56,6 +65,8 @@ You'll need:
 - A screen with HDMI (and the right micro HDMI cable for the Pi)
 - Another computer to flash the card and SSH in from
 
+On a Pi 5, use the official 5V 5A (27 W) USB-C supply. A weaker one still boots, but the Pi then limits USB devices to 600 mA in total, which isn't enough once a CarPlay dongle and audio are plugged in. Give it a cooler too, since it slows itself down when it gets hot. Plug the screen into the micro HDMI port next to the power port (HDMI0).
+
 ### 1. Flash the SD card
 
 1. Install [Raspberry Pi Imager](https://www.raspberrypi.com/software/) on your computer and put the SD card in.
@@ -80,7 +91,7 @@ ssh <user>@<hostname>.local
 
 If `.local` doesn't work on your network, find the Pi's IP address in your router's device list and use that instead. If you've reflashed the card before, clear the old fingerprint first with `ssh-keygen -R <hostname>.local`.
 
-Check you got the right image. `uname -m` should print `aarch64`, and the screen should show a text login, not a desktop.
+Check you got the right image. `uname -m` should print `aarch64`, and the screen should show a text login, not a desktop. `cat /etc/os-release` tells you which Debian release it's based on. This README works on both Bookworm and Trixie.
 
 ### 3. Update
 
@@ -91,6 +102,14 @@ sudo reboot
 ```
 
 Also worth checking once: `vcgencmd get_throttled` should say `throttled=0x0`. Anything else usually means the power supply isn't strong enough.
+
+Update the bootloader now too, since step 5 turns off the service that checks for updates at boot:
+
+```
+sudo rpi-eeprom-update        # shows the current and latest versions
+sudo rpi-eeprom-update -a     # installs the update, if there is one
+sudo reboot
+```
 
 ### 4. Track system changes (recommended)
 
@@ -137,6 +156,12 @@ See where you're starting from:
 ```
 systemd-analyze
 systemd-analyze blame | head -20
+```
+
+Service names can change between Pi OS releases, so check which of these your image has before turning anything off:
+
+```
+systemctl list-unit-files | grep -E 'wait-online|eeprom|e2scrub|cloud'
 ```
 
 These services slow boot down without doing anything a car needs:
@@ -226,7 +251,9 @@ python3 preview_screen.py screen.gif        # see the whole screen as the Pi wil
 
 Then commit the new `frames/*.json` and `git pull` on the Pi. You don't need to reinstall the service.
 
-`preview_screen.py` assumes a 1080p screen (240 x 67 characters). For another size, pass it in: `python3 preview_screen.py screen.gif 160 45`. Run `stty size` on the Pi's own screen to see yours (it prints rows, then columns).
+`preview_screen.py` assumes a 1080p screen (240 x 67 characters). For another size, pass it in: `python3 preview_screen.py screen.gif 320 90` for a 1440p screen. Run `stty size` on the Pi's own screen to see yours (it prints rows, then columns).
+
+You don't have to rebuild for a different screen. `splash.py` reads the console size when it starts, picks the biggest car that fits, centers it, and fills the extra sky with stars. On a bigger screen the car just takes up less of it.
 
 For a solid white car on the console instead of an ASCII one, build with `python3 build_frames.py --console-car blocks`.
 
