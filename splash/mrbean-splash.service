@@ -1,0 +1,25 @@
+[Unit]
+Description=Mr. Bean boot splash
+# Start early: once filesystems are mounted and the console font is set up
+# (setting the font clears the screen), without waiting for the network.
+DefaultDependencies=no
+After=local-fs.target systemd-vconsole-setup.service console-setup.service
+Before=shutdown.target
+Conflicts=shutdown.target
+
+[Service]
+Type=simple
+# @SPLASH_DIR@ gets replaced with the real folder when you install it (see README).
+ExecStart=/usr/bin/python3 @SPLASH_DIR@/splash.py
+Environment=PYTHONIOENCODING=utf-8
+Environment=PYTHONUNBUFFERED=1
+# Seconds to hold the empty scene before he drives in, so the monitor has
+# time to wake up. Raise it if the start still gets cut off.
+Environment=SPLASH_PREROLL=2.0
+StandardOutput=tty
+StandardError=journal
+TTYPath=/dev/tty1
+TTYReset=yes
+
+[Install]
+WantedBy=sysinit.target

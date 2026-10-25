@@ -1,0 +1,26 @@
+# Boot 01: fresh Pi OS Lite
+Sat 24 Oct 23:13:51 PDT 2026
+
+Startup finished in 2.256s (kernel) + 21.216s (userspace) = 23.472s 
+multi-user.target reached after 15.097s in userspace.
+
+7.750s NetworkManager.service
+5.960s NetworkManager-wait-online.service
+1.964s cloud-init-main.service
+1.164s dev-mmcblk0p2.device
+1.111s e2scrub_reap.service
+1.081s rpi-resize-swap-file.service
+1.017s rpi-eeprom-update.service
+ 856ms systemd-fsck@dev-disk-by\x2dpartuuid-904a963d\x2d01.service
+ 440ms user@1000.service
+ 422ms cloud-init-local.service
+ 307ms systemd-zram-setup@zram0.service
+ 303ms rpi-setup-loop@var-swap.service
+ 274ms avahi-daemon.service
+ 271ms bluetooth.service
+ 266ms dev-mqueue.mount
+ 263ms run-lock.mount
+ 262ms sys-kernel-debug.mount
+ 251ms systemd-udev-trigger.service
+ 238ms sys-kernel-tracing.mount
+ 237ms keyboard-setup.service

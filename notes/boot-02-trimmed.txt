@@ -1,48 +1,51 @@
 # Boot 02: trimmed services
-Date: Sat 24 Oct 20:21:21 PDT 2026
 Disabled: NetworkManager-wait-online, rpi-eeprom-update, e2scrub_reap, cloud-init
+Sat 24 Oct 23:16:33 PDT 2026
 
-## systemd-analyze
-Startup finished in 2.268s (kernel) + 12.944s (userspace) = 15.212s 
-multi-user.target reached after 12.943s in userspace.
+Startup finished in 2.265s (kernel) + 13.046s (userspace) = 15.312s 
+multi-user.target reached after 13.042s in userspace.
 
-## critical-chain
 The time when unit became active or started is printed after the "@" character.
 The time the unit took to start is printed after the "+" character.
 
-multi-user.target @12.943s
-└─ssh.service @12.688s +253ms
-  └─network.target @12.684s
-    └─NetworkManager.service @5.012s +7.670s
-      └─dbus.service @4.817s +186ms
-        └─basic.target @4.761s
-          └─sockets.target @4.761s
-            └─systemd-hostnamed.socket @4.760s
-              └─sysinit.target @4.751s
-                └─systemd-binfmt.service @4.620s +129ms
-                  └─proc-sys-fs-binfmt_misc.mount @4.688s +57ms
-                    └─systemd-journald.socket @2.175s
-                      └─-.mount @2.074s
-                        └─-.slice @2.074s
+multi-user.target @13.042s
+└─ssh.service @12.783s +257ms
+  └─network.target @12.779s
+    └─NetworkManager.service @5.037s +7.740s
+      └─dbus.service @4.850s +178ms
+        └─basic.target @4.798s
+          └─sockets.target @4.798s
+            └─systemd-hostnamed.socket @4.798s
+              └─sysinit.target @4.788s
+                └─systemd-tmpfiles-setup.service @4.700s +84ms
+                  └─local-fs.target @4.682s
+                    └─tmp.mount @4.642s +37ms
+                      └─swap.target @4.639s
+                        └─dev-zram0.swap @4.582s +53ms
+                          └─systemd-zram-setup@zram0.service @4.253s +309ms
+                            └─rpi-setup-loop@var-swap.service @3.969s +276ms
+                              └─systemd-remount-fs.service @2.375s +153ms
+                                └─systemd-journald.socket @2.197s
+                                  └─-.mount @2.087s
+                                    └─-.slice @2.087s
 
-## blame (top 20)
-7.670s NetworkManager.service
-1.154s dev-mmcblk0p2.device
-1.131s rpi-resize-swap-file.service
- 807ms systemd-fsck@dev-disk-by\x2dpartuuid-2d731b0e\x2d01.service
- 427ms user@1000.service
- 296ms systemd-journald.service
- 291ms systemd-udev-trigger.service
- 272ms systemd-zram-setup@zram0.service
- 255ms avahi-daemon.service
- 253ms keyboard-setup.service
- 253ms ssh.service
- 253ms bluetooth.service
- 252ms rpi-setup-loop@var-swap.service
- 245ms systemd-rfkill.service
- 223ms run-lock.mount
- 221ms sys-kernel-debug.mount
- 221ms dev-mqueue.mount
- 217ms sys-kernel-tracing.mount
- 193ms modprobe@drm.service
- 192ms modprobe@configfs.service
+7.740s NetworkManager.service
+1.178s dev-mmcblk0p2.device
+1.152s rpi-resize-swap-file.service
+ 812ms systemd-fsck@dev-disk-by\x2dpartuuid-904a963d\x2d01.service
+ 434ms user@1000.service
+ 309ms systemd-zram-setup@zram0.service
+ 288ms systemd-udev-trigger.service
+ 276ms rpi-setup-loop@var-swap.service
+ 257ms ssh.service
+ 255ms keyboard-setup.service
+ 252ms avahi-daemon.service
+ 239ms bluetooth.service
+ 229ms run-lock.mount
+ 229ms systemd-rfkill.service
+ 229ms dev-mqueue.mount
+ 225ms sys-kernel-debug.mount
+ 213ms sys-kernel-tracing.mount
+ 212ms wpa_supplicant.service
+ 204ms modprobe@drm.service
+ 201ms modprobe@configfs.service
