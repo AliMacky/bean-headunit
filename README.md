@@ -4,7 +4,7 @@ A homemade head unit for my 2001 Mazda Miata (NB, British Racing Green, his name
 
 I didn't want an off-the-shelf stereo. Outside of CarPlay their interfaces are bad, and the firmware is locked down, so you can't change anything. With a Pi underneath, it's just Linux, and I get to decide everything: what shows up when the car starts, when the screen turns on and off, what data from the car gets shown, and how the controls work.
 
-So far the project is a stripped-down Raspberry Pi OS install and a custom boot animation. This README covers setting up both from a blank SD card.
+So far the project is a stripped-down Raspberry Pi OS install, a custom boot animation, and the start of the Rust code for the head unit software. This README covers setting up the first two from a blank SD card, and building the code.
 
 ![The boot splash](splash/splash-preview-screen.gif)
 
@@ -12,6 +12,7 @@ So far the project is a stripped-down Raspberry Pi OS install and a custom boot 
 
 - [x] Pi OS Lite set up and trimmed for faster boot (4.8 s on the Pi 5, down from 23.5 s on a fresh Pi 4)
 - [x] Boot splash: an ASCII animation of the car that plays from early in boot
+- [ ] Head unit software in Rust: a core that reads the car and a Slint UI with swappable skins (started: the shared data contract)
 - [ ] CarPlay through a USB CarPlay dongle, first with react-carplay, then a native client
 - [ ] OBD2 over USB for engine codes and live data
 - [ ] Physical controls in place of the ashtray: a volume knob (click to pause, double click to skip, hold for Siri), a USB-C port, and a screen-off switch
@@ -47,6 +48,9 @@ On the Pi 5, booting without the initramfs (step 9) brought the kernel phase fro
 ```
 bean-headunit/
   README.md
+  Cargo.toml                 Rust workspace, lists the crates
+  Cargo.lock                 exact dependency versions, shared by every crate
+  model/                     bean-model: the data contract shared by the core, UI and sim
   notes/                     boot time measurements
   splash/
     splash.py                plays the boot animation (plain Python, no packages)
@@ -301,3 +305,40 @@ If the start gets cut off, your monitor is slow to wake up after the Pi switches
 You might occasionally catch a tearing line. The Linux console has no vsync. The splash only redraws characters that changed and never clears a line, which hides almost all of it. A graphical UI won't have this.
 
 The splash loops until something stops it. When there's a real UI, its service can stop the splash by adding `Conflicts=mrbean-splash.service` and `After=mrbean-splash.service` to its `[Unit]` section.
+
+## The head unit software
+
+This part is just getting started. The plan is two programs that talk over a local Unix socket:
+
+- `beand`, the core. It owns everything that has to keep working no matter what's on screen: reading OBD, ignition and power, trip logging, warnings and settings, and later calls and CarPlay.
+- `bean-ui`, the screen. It's built with [Slint](https://slint.dev) and loads its look from a skin folder when it starts, so the current design is just one skin of many.
+
+Keeping them apart means a UI crash doesn't stop logging or warnings. A third program, `sim`, will pretend to be the core with fake data, so I can build the UI at my desk without the car.
+
+Everything is Rust, in one Cargo workspace. So far it has one crate:
+
+- `model/` (`bean-model`): the contract between the core and everything that talks to it. Every program uses these same types, so they can't drift apart.
+
+The first slice of the contract covers water temp, rpm, battery voltage, OBD status, and the day/night theme. It follows a few rules:
+
+- Units are always metric. The skin converts to °F if that's what the user picked.
+- A value the core doesn't have (OBD unplugged, a sensor the car doesn't support) is unknown, not 0. In Rust that's an `Option`, so "0 rpm" and "no rpm reading" stay different things.
+- Messages are [MessagePack](https://msgpack.org) with field names included. It's smaller and quicker to parse than JSON, and keeping the names means an older UI can still read messages from a newer core.
+- `PROTOCOL_VERSION` in `model/src/lib.rs` goes up whenever a change would break older programs.
+
+### Building it
+
+I write and test on my laptop and build on the Pi when something needs the real hardware. Install Rust with [rustup](https://rustup.rs):
+
+```
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+Then from the repo root:
+
+```
+cargo build
+cargo test
+```
+
+Before committing I also run `cargo fmt` (formatting) and `cargo clippy` (lints).
