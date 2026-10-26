@@ -33,6 +33,8 @@ Measured with `systemd-analyze`, booting from a microSD card. The Pi 4 ran Bookw
 
 On the Pi 4, most of what was left was NetworkManager connecting to Wi-Fi, which nothing on screen waits for. On the Pi 5 that takes about 1.1 s, and the whole userspace boot fits in 3.4 s. Either way, the splash starts as soon as the filesystems are mounted, before the network is up.
 
+On the Pi 5, booting without the initramfs (step 9) brought the kernel phase from 1.4 s down to 0.7 s. The splash now starts about 2.7 s after the kernel does, compared to about 3.4 s before.
+
 `systemd-analyze` only starts counting once the kernel is running, so it misses the firmware and bootloader, and the time the monitor takes to wake up. What actually matters in a car is the time from turning the key to seeing the car on screen, so I also time that with a stopwatch from plugging in power:
 
 | Pi | Until the animation starts |
@@ -224,6 +226,28 @@ echo "disable_splash=1" | sudo tee -a /boot/firmware/config.txt
 sudo git -C /boot/firmware commit -am "Hide boot text"    # if you set up the repo in step 4
 sudo reboot
 ```
+
+### 9. Skip the initramfs (Trixie)
+
+Pi OS Trixie boots through an initramfs, a small temporary system that runs before the real one. The Pi kernel already has the drivers it needs to mount the SD card, so it doesn't need one. Bookworm didn't use one either. Skipping it cuts the kernel phase about in half, starts the splash about 0.7 s sooner, and gets rid of the two `e2fsck` lines the initramfs prints over the boot screen.
+
+Check that your image uses one first:
+
+```
+grep -n auto_initramfs /boot/firmware/config.txt     # Trixie shows auto_initramfs=1
+```
+
+If it does:
+
+```
+sudo sed -i 's/^auto_initramfs=1/auto_initramfs=0/' /boot/firmware/config.txt
+sudo git -C /boot/firmware commit -am "Boot without initramfs"
+sudo reboot
+```
+
+You don't lose the filesystem check. The initramfs used to check the root partition before mounting it. Without it, the kernel mounts root read-only, systemd checks it (`systemd-fsck-root.service`), and then remounts it read-write, the same as on Bookworm. The check's output goes to the journal instead of the screen, so `journalctl -b -u systemd-fsck-root` shows it ran.
+
+To undo it, run `sudo git -C /boot/firmware revert --no-edit HEAD` and reboot. If the Pi won't boot, put the card in your computer, open `config.txt` on the boot partition, and change `auto_initramfs=0` back to `1`.
 
 That's it. From now on the Pi boots straight into the animation.
 

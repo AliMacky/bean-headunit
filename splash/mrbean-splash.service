@@ -15,7 +15,7 @@ Environment=PYTHONIOENCODING=utf-8
 Environment=PYTHONUNBUFFERED=1
 # Seconds to hold the empty scene before he drives in, so the monitor has
 # time to wake up. Raise it if the start still gets cut off.
-Environment=SPLASH_PREROLL=2.0
+Environment=SPLASH_PREROLL=0.3
 StandardOutput=tty
 StandardError=journal
 TTYPath=/dev/tty1

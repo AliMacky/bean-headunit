@@ -1,0 +1,12 @@
+Startup finished in 719ms (kernel) + 6.076s (userspace) = 6.796s 
+multi-user.target reached after 6.072s in userspace.
+
+The time when unit became active or started is printed after the "@" character.
+The time the unit took to start is printed after the "+" character.
+
+mrbean-splash.service @1.970s
+└─console-setup.service @1.959s +10ms
+  └─local-fs.target @1.957s
+    └─boot-firmware.mount @1.930s +26ms
+      └─systemd-fsck@dev-disk-by\x2dpartuuid-e588093d\x2d01.service @1.348s +360ms
+        └─dev-disk-by\x2dpartuuid-e588093d\x2d01.device @1.346s
