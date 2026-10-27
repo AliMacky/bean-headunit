@@ -9,7 +9,7 @@ Conflicts=shutdown.target
 
 [Service]
 Type=simple
-# @SPLASH_DIR@ gets replaced with the real folder when you install it (see README).
+# @SPLASH_DIR@ gets replaced with the real folder when you install it (see docs/pi-setup.md).
 ExecStart=/usr/bin/python3 @SPLASH_DIR@/splash.py
 Environment=PYTHONIOENCODING=utf-8
 Environment=PYTHONUNBUFFERED=1
