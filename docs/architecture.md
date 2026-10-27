@@ -19,7 +19,7 @@ Only one of `beand` and `bean-sim` runs at a time. Everything on the right side 
 | Fake core | `sim/` (`bean-sim`) | Working | Streams made-up car data, so the UI can be built without the car |
 | Dump client | `model/examples/dump.rs` | Working | Connects and prints every message, for debugging |
 | Core | `core/` (`beand`) | Planned | OBD, ignition and power, trip logging to SQLite, warnings, settings, later calls and the CarPlay host |
-| UI | `ui/` (`bean-ui`) | Planned | Rust and [Slint](https://slint.dev). Connects to the core and loads a skin at runtime |
+| UI | `ui/` (`bean-ui`) | Started | Rust and [Slint](https://slint.dev). Connects to the core and shows live values; loading a skin at runtime comes next |
 | Skins | `skins/cluster/` | Planned | The current "90s cluster" design. Night and day and the accent color are settings inside it |
 | Web dashboard | `web/` | Later | Trip history and diagnostics from another device |
 
@@ -62,13 +62,32 @@ The socket lives at `/tmp/bean.sock` for now (`SOCKET_PATH`). On the Pi it will 
 
 `bean-sim` and the clients use plain blocking reads and writes, with one thread per client. It's simple, and nothing here needs more yet. If the core ends up juggling enough connections and devices, async Rust is an option later.
 
+## The UI
+
+`bean-ui` opens a fixed 1024x600 window, the size of the 7" screen it's designed for. For now the markup is built into the binary with Slint's `slint!` macro and shows water temp and rpm. Moving it out into `skins/cluster/` and loading it at runtime is the next step.
+
+It runs on two threads:
+
+- The main thread belongs to Slint's event loop, which draws the window and handles input. Slint's UI objects can only be touched from this thread, and Rust enforces that at compile time.
+- A reader thread connects to the socket and reads frames. For each `CarState` it posts a small job back to the main thread (`upgrade_in_event_loop` on a weak handle to the window), and that job sets the window's properties. Slint's bindings then redraw whatever depends on them.
+
+Each value the contract makes optional becomes two properties in the UI, a `-known` flag and the value, since Slint has no `Option`. Unknown values show as `--`, never as 0.
+
+When the core isn't there, the UI stays up and keeps trying:
+
+- The reader thread tries to connect once a second until it works.
+- If the core goes away mid-stream, the UI shows NO CORE and clears every value to `--`, since a frozen reading is worse than no reading. Then it goes back to retrying.
+- Failed connects are logged once per kind of error, not every second, so the log stays readable.
+- If the window is closed, the reader thread stops.
+
 ## Working on it
 
 I write and test on a laptop and build on the Pi when something needs the real hardware. Before committing I run `cargo fmt` and `cargo clippy` along with `cargo test`.
 
-What the dump shows when things go wrong, which the UI will need to handle:
+What clients see when things go wrong:
 
 - The core stops while a client is connected: `read_frame` fails with `UnexpectedEof`.
-- A client starts before the core: connecting fails with `ConnectionRefused`.
+- A client starts and the core has never run: connecting fails with `NotFound`, because the socket file doesn't exist.
+- A client starts after the core has stopped: connecting fails with `ConnectionRefused`, because the old socket file is still there with nothing listening. `bean-sim` removes the stale file when it starts.
 
-Right now the dump just exits. The UI will show a disconnected state and keep retrying.
+The dump just exits on any of these. The UI handles all three the same way: show NO CORE and retry.

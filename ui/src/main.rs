@@ -1,5 +1,7 @@
+use std::io;
 use std::os::unix::net::UnixStream;
 use std::thread;
+use std::time::Duration;
 
 use bean_model::{CarState, SOCKET_PATH, read_frame};
 
@@ -10,6 +12,7 @@ slint::slint! {
         title: "bean-ui";
         background: #000000;
 
+        in property <bool> connected;
         in property <bool> water-known;
         in property <int> water-c;
         in property <bool> rpm-known;
@@ -17,6 +20,12 @@ slint::slint! {
 
         VerticalLayout {
             alignment: center;
+            Text {
+                text: root.connected ? "" : "NO CORE";
+                color: #E0A030;
+                font-size: 48px;
+                horizontal-alignment: center;
+            }
             Text {
                 text: root.water-known ? "WATER: " + root.water-c + "°C" : "WATER: --";
                 color: #C9A26B;
@@ -49,36 +58,70 @@ fn apply(window: &MainWindow, state: &CarState) {
     }
 }
 
+fn set_disconnected(window: &MainWindow) {
+    window.set_connected(false);
+    window.set_water_known(false);
+    window.set_rpm_known(false);
+}
+
 fn main() -> Result<(), slint::PlatformError> {
     let window = MainWindow::new()?;
     let weak = window.as_weak();
 
     thread::spawn(move || {
-        let mut socket = match UnixStream::connect(SOCKET_PATH) {
-            Ok(s) => s,
-            Err(e) => {
-                eprintln!("connect failed: {e}");
-                return;
-            }
-        };
-
-        println!("connected to {SOCKET_PATH}");
+        let mut last_err: Option<io::ErrorKind> = None;
 
         loop {
-            let state = match read_frame(&mut socket) {
+            let mut socket = match UnixStream::connect(SOCKET_PATH) {
                 Ok(s) => s,
                 Err(e) => {
-                    eprintln!("read failed: {e}");
-                    return;
+                    if Some(e.kind()) != last_err {
+                        eprintln!("connect failed: {e}. Waiting for reconnection...");
+                    }
+                    last_err = Some(e.kind());
+                    thread::sleep(Duration::from_secs(1));
+                    continue;
                 }
             };
 
+            last_err = None;
+
             if weak
-                .upgrade_in_event_loop(move |w| apply(&w, &state))
+                .upgrade_in_event_loop(|w| {
+                    w.set_connected(true);
+                })
                 .is_err()
             {
                 return;
             }
+
+            println!("connected to {SOCKET_PATH}");
+
+            loop {
+                let state = match read_frame(&mut socket) {
+                    Ok(s) => s,
+                    Err(e) => {
+                        eprintln!("read failed: {e}");
+                        break;
+                    }
+                };
+
+                if weak
+                    .upgrade_in_event_loop(move |w| apply(&w, &state))
+                    .is_err()
+                {
+                    return;
+                }
+            }
+
+            if weak
+                .upgrade_in_event_loop(|w| set_disconnected(&w))
+                .is_err()
+            {
+                return;
+            }
+
+            thread::sleep(Duration::from_secs(1));
         }
     });
 

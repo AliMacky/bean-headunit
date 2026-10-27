@@ -11,7 +11,8 @@ Off-the-shelf stereos have bad interfaces outside of CarPlay, and their firmware
 - [x] Pi OS Lite trimmed for a fast boot: 4.8 s on the Pi 5, down from 14.8 s fresh ([details](docs/boot-time.md))
 - [x] An ASCII boot splash of the car that plays from early in boot ([details](docs/splash.md))
 - [x] A shared data contract in Rust and a fake core that streams car data over a Unix socket ([details](docs/architecture.md))
-- [ ] A Slint UI with swappable skins, showing live data
+- [x] A first Slint UI window that shows live water temp and rpm from the core, and reconnects on its own when the core restarts ([details](docs/architecture.md#the-ui))
+- [ ] Swappable skins for the UI, starting with the real Home screen from the design
 - [ ] The core: OBD2 over USB for live data and trouble codes, trip logging, warnings
 - [ ] CarPlay through a USB dongle, as one view inside the UI
 - [ ] Bluetooth hands-free calls when CarPlay isn't running
@@ -38,8 +39,11 @@ On a laptop (macOS or Linux) with Rust installed through [rustup](https://rustup
 ```
 cargo test
 cargo run -p bean-sim                       # terminal 1: the fake core
-cargo run -p bean-model --example dump      # terminal 2: prints the live car state
+cargo run -p bean-ui                        # terminal 2: the UI window with live values
+cargo run -p bean-model --example dump      # or this: prints the live car state
 ```
+
+The UI can start before or after the sim. Without a core it shows NO CORE and keeps retrying.
 
 To build the Pi itself from a blank SD card, follow [docs/pi-setup.md](docs/pi-setup.md).
 
@@ -50,6 +54,7 @@ bean-headunit/
   Cargo.toml        Rust workspace
   model/            bean-model: the data contract shared by the core, UI and sim
   sim/              bean-sim: a fake core that streams made-up car data
+  ui/               bean-ui: the Slint window that shows the car state
   splash/           the boot animation (Python) and its systemd service
   docs/             setup guide, architecture, boot time, splash
   notes/            raw boot time measurements
