@@ -325,6 +325,9 @@ The first slice of the contract covers water temp, rpm, battery voltage, OBD sta
 - A value the core doesn't have (OBD unplugged, a sensor the car doesn't support) is unknown, not 0. In Rust that's an `Option`, so "0 rpm" and "no rpm reading" stay different things.
 - Messages are [MessagePack](https://msgpack.org) with field names included. It's smaller and quicker to parse than JSON, and keeping the names means an older UI can still read messages from a newer core.
 - `PROTOCOL_VERSION` in `model/src/lib.rs` goes up whenever a change would break older programs.
+- Messages are [MessagePack](https://msgpack.org) with field names included. It's smaller and quicker to parse than JSON, and keeping the names means an older UI can still read messages from a newer core.
+- On the socket, each message is a 4-byte big-endian length followed by the MessagePack bytes, up to 64 KB. MessagePack has no separator between messages the way JSON lines has newlines, so the length is how a reader knows where one ends.
+- `PROTOCOL_VERSION` in `model/src/lib.rs` goes up whenever a change would break older programs.
 
 ### Building it
 
