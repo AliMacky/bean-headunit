@@ -51,6 +51,7 @@ bean-headunit/
   Cargo.toml                 Rust workspace, lists the crates
   Cargo.lock                 exact dependency versions, shared by every crate
   model/                     bean-model: the data contract shared by the core, UI and sim
+  sim/                       bean-sim: a fake core that streams made-up car data, for working without the car
   notes/                     boot time measurements
   splash/
     splash.py                plays the boot animation (plain Python, no packages)
@@ -313,20 +314,20 @@ This part is just getting started. The plan is two programs that talk over a loc
 - `beand`, the core. It owns everything that has to keep working no matter what's on screen: reading OBD, ignition and power, trip logging, warnings and settings, and later calls and CarPlay.
 - `bean-ui`, the screen. It's built with [Slint](https://slint.dev) and loads its look from a skin folder when it starts, so the current design is just one skin of many.
 
-Keeping them apart means a UI crash doesn't stop logging or warnings. A third program, `sim`, will pretend to be the core with fake data, so I can build the UI at my desk without the car.
+Keeping them apart means a UI crash doesn't stop logging or warnings. A third program, `sim`, pretends to be the core with fake data, so I can build the UI at my desk without the car.
 
-Everything is Rust, in one Cargo workspace. So far it has one crate:
+Everything is Rust, in one Cargo workspace. So far it has two crates:
 
 - `model/` (`bean-model`): the contract between the core and everything that talks to it. Every program uses these same types, so they can't drift apart.
+- `sim/` (`bean-sim`): listens on the socket and sends every client a fake car state 10 times a second. The engine warms up to 90 °C, rpm swings between idle and 4000, and the battery wobbles around 14.1 V. Every client sees the same fake car.
 
 The first slice of the contract covers water temp, rpm, battery voltage, OBD status, and the day/night theme. It follows a few rules:
 
 - Units are always metric. The skin converts to °F if that's what the user picked.
 - A value the core doesn't have (OBD unplugged, a sensor the car doesn't support) is unknown, not 0. In Rust that's an `Option`, so "0 rpm" and "no rpm reading" stay different things.
 - Messages are [MessagePack](https://msgpack.org) with field names included. It's smaller and quicker to parse than JSON, and keeping the names means an older UI can still read messages from a newer core.
-- `PROTOCOL_VERSION` in `model/src/lib.rs` goes up whenever a change would break older programs.
-- Messages are [MessagePack](https://msgpack.org) with field names included. It's smaller and quicker to parse than JSON, and keeping the names means an older UI can still read messages from a newer core.
 - On the socket, each message is a 4-byte big-endian length followed by the MessagePack bytes, up to 64 KB. MessagePack has no separator between messages the way JSON lines has newlines, so the length is how a reader knows where one ends.
+- The socket lives at `/tmp/bean.sock` for now (`SOCKET_PATH` in `bean-model`), so every program finds it in the same place.
 - `PROTOCOL_VERSION` in `model/src/lib.rs` goes up whenever a change would break older programs.
 
 ### Building it
@@ -345,3 +346,11 @@ cargo test
 ```
 
 Before committing I also run `cargo fmt` (formatting) and `cargo clippy` (lints).
+
+To start the fake core:
+
+```
+cargo run -p bean-sim
+```
+
+It prints `sim listening on /tmp/bean.sock` and runs until you press Ctrl+C. To check that it's sending, run `nc -U /tmp/bean.sock` in another terminal. You'll see the raw MessagePack scroll by as mostly garbage, with the field names readable in between.

@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::io::{self, Read, Write};
 
+pub const SOCKET_PATH: &str = "/tmp/bean.sock";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const MAX_FRAME: usize = 64 * 1024;
 
