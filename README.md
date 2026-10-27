@@ -318,7 +318,7 @@ Keeping them apart means a UI crash doesn't stop logging or warnings. A third pr
 
 Everything is Rust, in one Cargo workspace. So far it has two crates:
 
-- `model/` (`bean-model`): the contract between the core and everything that talks to it. Every program uses these same types, so they can't drift apart.
+- `model/` (`bean-model`): the contract between the core and everything that talks to it. Every program uses these same types, so they can't drift apart. Its `examples/dump.rs` is a tiny client that prints whatever comes over the socket.
 - `sim/` (`bean-sim`): listens on the socket and sends every client a fake car state 10 times a second. The engine warms up to 90 °C, rpm swings between idle and 4000, and the battery wobbles around 14.1 V. Every client sees the same fake car.
 
 The first slice of the contract covers water temp, rpm, battery voltage, OBD status, and the day/night theme. It follows a few rules:
@@ -354,3 +354,11 @@ cargo run -p bean-sim
 ```
 
 It prints `sim listening on /tmp/bean.sock` and runs until you press Ctrl+C. To check that it's sending, run `nc -U /tmp/bean.sock` in another terminal. You'll see the raw MessagePack scroll by as mostly garbage, with the field names readable in between.
+
+To see the data as real values instead, run the dump client in another terminal:
+
+```
+cargo run -p bean-model --example dump
+```
+
+It connects to the socket and prints every `CarState` it receives, one per line, like `CarState { water_temp_c: Some(47), rpm: Some(3127), ... }`. For now it just exits when the sim stops (`UnexpectedEof`) or isn't running yet (`ConnectionRefused`).
