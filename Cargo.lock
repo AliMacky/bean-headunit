@@ -470,6 +470,7 @@ dependencies = [
 name = "bean-ui"
 version = "0.1.0"
 dependencies = [
+ "bean-model",
  "slint",
 ]
 
