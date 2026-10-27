@@ -55,6 +55,7 @@ bean-headunit/
   model/            bean-model: the data contract shared by the core, UI and sim
   sim/              bean-sim: a fake core that streams made-up car data
   ui/               bean-ui: the Slint window that shows the car state
+  log/              bean-log: the shared logger every program uses
   splash/           the boot animation (Python) and its systemd service
   docs/             setup guide, architecture, boot time, splash
   notes/            raw boot time measurements

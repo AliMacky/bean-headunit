@@ -1,3 +1,4 @@
+use log::{info, warn};
 use std::io;
 use std::os::unix::net::UnixStream;
 use std::thread;
@@ -65,6 +66,8 @@ fn set_disconnected(window: &MainWindow) {
 }
 
 fn main() -> Result<(), slint::PlatformError> {
+    bean_log::init().expect("Failed to init logger");
+
     let window = MainWindow::new()?;
     let weak = window.as_weak();
 
@@ -76,7 +79,7 @@ fn main() -> Result<(), slint::PlatformError> {
                 Ok(s) => s,
                 Err(e) => {
                     if Some(e.kind()) != last_err {
-                        eprintln!("connect failed: {e}. Waiting for reconnection...");
+                        warn!("connect failed: {e}. Waiting for reconnection...");
                     }
                     last_err = Some(e.kind());
                     thread::sleep(Duration::from_secs(1));
@@ -95,13 +98,13 @@ fn main() -> Result<(), slint::PlatformError> {
                 return;
             }
 
-            println!("connected to {SOCKET_PATH}");
+            info!("connected to {SOCKET_PATH}");
 
             loop {
                 let state = match read_frame(&mut socket) {
                     Ok(s) => s,
                     Err(e) => {
-                        eprintln!("read failed: {e}");
+                        warn!("read failed: {e}");
                         break;
                     }
                 };

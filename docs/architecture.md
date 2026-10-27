@@ -18,6 +18,7 @@ Only one of `beand` and `bean-sim` runs at a time. Everything on the right side 
 | Contract | `model/` (`bean-model`) | Started | The types and wire format every program shares |
 | Fake core | `sim/` (`bean-sim`) | Working | Streams made-up car data, so the UI can be built without the car |
 | Dump client | `model/examples/dump.rs` | Working | Connects and prints every message, for debugging |
+| Logger | `log/` (`bean-log`) | Working | One log format for every program: time since start, level, and where the line came from |
 | Core | `core/` (`beand`) | Planned | OBD, ignition and power, trip logging to SQLite, warnings, settings, later calls and the CarPlay host |
 | UI | `ui/` (`bean-ui`) | Started | Rust and [Slint](https://slint.dev). Connects to the core and shows live values; loading a skin at runtime comes next |
 | Skins | `skins/cluster/` | Planned | The current "90s cluster" design. Night and day and the accent color are settings inside it |
@@ -79,6 +80,23 @@ When the core isn't there, the UI stays up and keeps trying:
 - If the core goes away mid-stream, the UI shows NO CORE and clears every value to `--`, since a frozen reading is worse than no reading. Then it goes back to retrying.
 - Failed connects are logged once per kind of error, not every second, so the log stays readable.
 - If the window is closed, the reader thread stops.
+
+## Logging
+
+Every program logs through the standard [`log`](https://docs.rs/log) crate's macros (`info!`, `warn!`, `error!`), and `bean-log` is the backend that decides what a line looks like. Each program calls `bean_log::init()` first thing in `main`. Lines go to stderr:
+
+```
+[   0.002] WARN  bean_ui: connect failed: No such file or directory (os error 2)
+[   3.418] INFO  bean_ui: connected to /tmp/bean.sock
+```
+
+The time is seconds since that program started, which is handy for seeing how long startup steps take. The name after the level is the crate (or module) the line came from, filled in by the macro.
+
+Levels mean the same thing everywhere: `error` when a program can't do its job, `warn` when something went wrong but it's handled (like the core going away), `info` for normal events worth seeing.
+
+Program output isn't logging. The dump's `println!` of each state goes to stdout and stays that way.
+
+On the Pi, each program will run as a systemd service, so the journal collects all their stderr in one place, and `journalctl -o short-monotonic` lines everything up by time since boot. Planned for `bean-log`: colors when stderr is a terminal, and systemd's level prefixes when it isn't, so the journal knows which lines are warnings and errors.
 
 ## Working on it
 

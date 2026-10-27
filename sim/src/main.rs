@@ -1,3 +1,4 @@
+use log::{info, warn};
 use std::io;
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::thread;
@@ -6,14 +7,16 @@ use std::time::{Duration, Instant};
 use bean_model::{CarState, ObdStatus, SOCKET_PATH, Theme, write_frame};
 
 fn main() -> io::Result<()> {
+    bean_log::init().expect("Failed to init logger");
+
     let _ = std::fs::remove_file(SOCKET_PATH);
     let listener = UnixListener::bind(SOCKET_PATH)?;
-    println!("sim listening on {SOCKET_PATH}");
+    info!("sim listening on {SOCKET_PATH}");
 
     let start = Instant::now();
     for stream in listener.incoming() {
         let stream = stream?;
-        println!("client connected");
+        info!("client connected");
         thread::spawn(move || serve(stream, start));
     }
     Ok(())
@@ -24,7 +27,7 @@ fn serve(mut stream: UnixStream, start: Instant) {
         let t = start.elapsed().as_secs_f32();
         let state = fake_state(t);
         if write_frame(&mut stream, &state).is_err() {
-            println!("client disconnected");
+            warn!("client disconnected");
             return;
         }
         thread::sleep(Duration::from_millis(100));
