@@ -1,3 +1,3 @@
 [workspace]
 resolver = "3"
-members=["model", "sim"]
+members=["model", "sim", "ui"]
