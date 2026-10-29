@@ -6,63 +6,32 @@ use std::time::Duration;
 
 use bean_model::{CarState, SOCKET_PATH, read_frame};
 
-slint::slint! {
-    export component MainWindow inherits Window {
-        width: 1024px;
-        height: 600px;
-        title: "bean-ui";
-        background: #000000;
-
-        in property <bool> connected;
-        in property <bool> water-known;
-        in property <int> water-c;
-        in property <bool> rpm-known;
-        in property <int> rpm;
-
-        VerticalLayout {
-            alignment: center;
-            Text {
-                text: root.connected ? "" : "NO CORE";
-                color: #E0A030;
-                font-size: 48px;
-                horizontal-alignment: center;
-            }
-            Text {
-                text: root.water-known ? "WATER: " + root.water-c + "°C" : "WATER: --";
-                color: #C9A26B;
-                font-size: 48px;
-                horizontal-alignment: center;
-            }
-            Text {
-                text: root.rpm-known ? "RPM: " + root.rpm : "RPM: ----";
-                color: #C9A26B;
-                font-size: 48px;
-                horizontal-alignment: center;
-            }
-        }
-    }
-}
+slint::include_modules!();
 
 fn apply(window: &MainWindow, state: &CarState) {
+    let car = window.global::<Car>();
+
     if let Some(t) = state.water_temp_c {
-        window.set_water_known(true);
-        window.set_water_c(i32::from(t));
+        car.set_water_known(true);
+        car.set_water_c(i32::from(t));
     } else {
-        window.set_water_known(false);
+        car.set_water_known(false);
     }
 
     if let Some(r) = state.rpm {
-        window.set_rpm_known(true);
-        window.set_rpm(i32::from(r));
+        car.set_rpm_known(true);
+        car.set_rpm(i32::from(r));
     } else {
-        window.set_rpm_known(false);
+        car.set_rpm_known(false);
     }
 }
 
 fn set_disconnected(window: &MainWindow) {
-    window.set_connected(false);
-    window.set_water_known(false);
-    window.set_rpm_known(false);
+    let car = window.global::<Car>();
+
+    car.set_connected(false);
+    car.set_water_known(false);
+    car.set_rpm_known(false);
 }
 
 fn main() -> Result<(), slint::PlatformError> {
@@ -91,7 +60,7 @@ fn main() -> Result<(), slint::PlatformError> {
 
             if weak
                 .upgrade_in_event_loop(|w| {
-                    w.set_connected(true);
+                    w.global::<Car>().set_connected(true);
                 })
                 .is_err()
             {

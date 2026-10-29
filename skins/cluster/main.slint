@@ -1,0 +1,36 @@
+export global Car {
+    in property <bool> connected;
+    in property <bool> water-known;
+    in property <int> water-c;
+    in property <bool> rpm-known;
+    in property <int> rpm;
+}
+
+export component MainWindow inherits Window {
+    width: 1024px;
+    height: 600px;
+    title: "bean-ui";
+    background: #000000;
+
+    VerticalLayout {
+        alignment: center;
+        Text {
+            text: Car.connected ? "" : "NO CORE";
+            color: #E0A030;
+            font-size: 48px;
+            horizontal-alignment: center;
+        }
+        Text {
+            text: Car.water-known ? "WATER: " + Car.water-c + "°C" : "WATER: --";
+            color: #C9A26B;
+            font-size: 48px;
+            horizontal-alignment: center;
+        }
+        Text {
+            text: Car.rpm-known ? "RPM: " + Car.rpm : "RPM: ----";
+            color: #C9A26B;
+            font-size: 48px;
+            horizontal-alignment: center;
+        }
+    }
+}

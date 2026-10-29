@@ -20,13 +20,15 @@ Only one of `beand` and `bean-sim` runs at a time. Everything on the right side 
 | Dump client | `model/examples/dump.rs` | Working | Connects and prints every message, for debugging |
 | Logger | `log/` (`bean-log`) | Working | One log format for every program: time since start, level, and where the line came from |
 | Core | `core/` (`beand`) | Planned | OBD, ignition and power, trip logging to SQLite, warnings, settings, later calls and the CarPlay host |
-| UI | `ui/` (`bean-ui`) | Started | Rust and [Slint](https://slint.dev). Connects to the core and shows live values; loading a skin at runtime comes next |
-| Skins | `skins/cluster/` | Planned | The current "90s cluster" design. Night and day and the accent color are settings inside it |
+| UI | `ui/` (`bean-ui`) | Started | Rust and [Slint](https://slint.dev). Connects to the core and shows live values from the skin it was built with |
+| Skins | `skins/cluster/` | Started | The current "90s cluster" design. Night and day and the accent color will be settings inside it |
 | Web dashboard | `web/` | Later | Trip history and diagnostics from another device |
 
 Why separate processes: if the UI crashes or restarts, the core keeps logging and keeps checking warning thresholds. It also means the UI can be developed on a laptop against `bean-sim`, with nothing car-specific running.
 
-Why skins: a skin is a folder of `.slint` files, tokens and fonts that binds to one Slint global holding all the car state, plus its callbacks. The UI shell loads it with the Slint interpreter, so a new look doesn't need a rebuild. The Slint global will be generated from `bean-model`, so the core, the UI and the skins can't drift apart.
+Why skins: a skin is a folder of `.slint` files, tokens and fonts that reads all the car state from one Slint global, `Car`, plus its callbacks. Keeping the look in its own folder means a new design doesn't touch the Rust code.
+
+Skins are compiled into `bean-ui` at build time (`ui/build.rs` runs `slint-build`), not loaded at runtime with the Slint interpreter. I tried the interpreter route on paper and dropped it: switching skins would still need a restart, the Pi would have to compile the skin on every boot, the binary gets bigger, and a typo in a property name would only show up at runtime. Compiled, Rust and the skin are checked against each other by the compiler, and switching skins is a rebuild, which is fine since it rarely happens. For quick design work, Slint's editor live preview redraws a `.slint` file without rebuilding anything.
 
 ## The contract
 
@@ -65,7 +67,7 @@ The socket lives at `/tmp/bean.sock` for now (`SOCKET_PATH`). On the Pi it will 
 
 ## The UI
 
-`bean-ui` opens a fixed 1024x600 window, the size of the 7" screen it's designed for. For now the markup is built into the binary with Slint's `slint!` macro and shows water temp and rpm. Moving it out into `skins/cluster/` and loading it at runtime is the next step.
+`bean-ui` opens a fixed 1024x600 window, the size of the 7" screen it's designed for. The markup lives in `skins/cluster/main.slint`, which `ui/build.rs` compiles into Rust code that `main.rs` pulls in with `slint::include_modules!()`. For now it shows water temp and rpm; the real Home screen from the design comes next.
 
 It runs on two threads:
 

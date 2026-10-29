@@ -8,3 +8,6 @@ bean-log = { version = "0.1.0", path = "../log" }
 bean-model = { version = "0.1.0", path = "../model" }
 log = "0.4.34"
 slint = "1.18.1"
+
+[build-dependencies]
+slint-build = "1.18.1"

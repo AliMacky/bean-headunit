@@ -12,7 +12,7 @@ Off-the-shelf stereos have bad interfaces outside of CarPlay, and their firmware
 - [x] An ASCII boot splash of the car that plays from early in boot ([details](docs/splash.md))
 - [x] A shared data contract in Rust and a fake core that streams car data over a Unix socket ([details](docs/architecture.md))
 - [x] A first Slint UI window that shows live water temp and rpm from the core, and reconnects on its own when the core restarts ([details](docs/architecture.md#the-ui))
-- [ ] Swappable skins for the UI, starting with the real Home screen from the design
+- [ ] Skins for the UI (built in at compile time), starting with the real Home screen from the design
 - [ ] The core: OBD2 over USB for live data and trouble codes, trip logging, warnings
 - [ ] CarPlay through a USB dongle, as one view inside the UI
 - [ ] Bluetooth hands-free calls when CarPlay isn't running
@@ -55,6 +55,7 @@ bean-headunit/
   model/            bean-model: the data contract shared by the core, UI and sim
   sim/              bean-sim: a fake core that streams made-up car data
   ui/               bean-ui: the Slint window that shows the car state
+  skins/            the UI's look, one folder per skin (cluster/ is the current one)
   log/              bean-log: the shared logger every program uses
   splash/           the boot animation (Python) and its systemd service
   docs/             setup guide, architecture, boot time, splash
