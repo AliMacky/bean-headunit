@@ -1,7 +1,13 @@
+import "fonts/Saira_SemiCondensed-Regular.ttf";
+import "fonts/Saira_SemiCondensed-SemiBold.ttf";
+import "fonts/Saira_SemiCondensed-SemiBoldItalic.ttf";
+import "fonts/Saira_SemiCondensed-ExtraBoldItalic.ttf";
+
 import { Car } from "car.slint";
 import { Tokens } from "tokens.slint";
 
 export component MainWindow inherits Window {
+    default-font-family: "Saira SemiCondensed";
     width: 1024px;
     height: 600px;
     title: "bean-ui";
@@ -40,13 +46,15 @@ export component MainWindow inherits Window {
                 }
                 Text {
                     text: Car.water-known ? "WATER: " + Car.water-c + "°C" : "WATER: --";
-                    color: Tokens.accent;
-                    font-size: 48px;
+                    color: Tokens.text;
                     horizontal-alignment: center;
+                    font-size: Tokens.fs-value;
+                    font-weight: 800;
+                    font-italic: true;
                 }
                 Text {
                     text: Car.rpm-known ? "RPM: " + Car.rpm : "RPM: ----";
-                    color: Tokens.accent;
+                    color: Tokens.text;
                     font-size: 48px;
                     horizontal-alignment: center;
                 }
