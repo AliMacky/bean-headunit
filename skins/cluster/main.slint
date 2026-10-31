@@ -1,16 +1,11 @@
-export global Car {
-    in property <bool> connected;
-    in property <bool> water-known;
-    in property <int> water-c;
-    in property <bool> rpm-known;
-    in property <int> rpm;
-}
+import { Car } from "car.slint";
+import { Tokens } from "tokens.slint";
 
 export component MainWindow inherits Window {
     width: 1024px;
     height: 600px;
     title: "bean-ui";
-    background: #000000;
+    background: Tokens.bg;
 
     VerticalLayout {
         alignment: center;
@@ -22,15 +17,17 @@ export component MainWindow inherits Window {
         }
         Text {
             text: Car.water-known ? "WATER: " + Car.water-c + "°C" : "WATER: --";
-            color: #C9A26B;
+            color: Tokens.accent;
             font-size: 48px;
             horizontal-alignment: center;
         }
         Text {
             text: Car.rpm-known ? "RPM: " + Car.rpm : "RPM: ----";
-            color: #C9A26B;
+            color: Tokens.accent;
             font-size: 48px;
             horizontal-alignment: center;
         }
     }
 }
+
+export { Car } from "car.slint";

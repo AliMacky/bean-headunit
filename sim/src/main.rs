@@ -40,6 +40,10 @@ fn fake_state(t: f32) -> CarState {
         rpm: Some((2400.0 + 1600.0 * (t * 0.5).sin()) as u16),
         battery_v: Some(14.1 + 0.2 * t.sin()),
         obd_status: ObdStatus::Connected,
-        theme: Theme::Night,
+        theme: if (t as u64 / 10).is_multiple_of(2) {
+            Theme::Night
+        } else {
+            Theme::Day
+        },
     }
 }

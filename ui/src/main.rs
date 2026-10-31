@@ -4,12 +4,13 @@ use std::os::unix::net::UnixStream;
 use std::thread;
 use std::time::Duration;
 
-use bean_model::{CarState, SOCKET_PATH, read_frame};
+use bean_model::{CarState, SOCKET_PATH, Theme, read_frame};
 
 slint::include_modules!();
 
 fn apply(window: &MainWindow, state: &CarState) {
     let car = window.global::<Car>();
+    car.set_night(state.theme == Theme::Night);
 
     if let Some(t) = state.water_temp_c {
         car.set_water_known(true);
