@@ -4,7 +4,9 @@ import "fonts/Saira_SemiCondensed-SemiBoldItalic.ttf";
 import "fonts/Saira_SemiCondensed-ExtraBoldItalic.ttf";
 
 import { Car } from "car.slint";
+import { Settings } from "settings.slint";
 import { Tokens } from "tokens.slint";
+import { TopBar } from "top_bar.slint";
 
 export component MainWindow inherits Window {
     default-font-family: "Saira SemiCondensed";
@@ -21,13 +23,7 @@ export component MainWindow inherits Window {
         spacing: Tokens.gap-region;
 
 
-        //top bar
-        Rectangle {
-            height: Tokens.top-bar-h;
-            border-width: Tokens.border;
-            border-color: Tokens.line;
-            border-radius: Tokens.radius;
-        }
+        TopBar { title: Settings.title; status: Car.connected ? "" : "NO CORE"; }
 
         //content
         Rectangle {
@@ -38,12 +34,6 @@ export component MainWindow inherits Window {
 
             VerticalLayout {
                 alignment: center;
-                Text {
-                    text: Car.connected ? "" : "NO CORE";
-                    color: Tokens.warn;
-                    font-size: 48px;
-                    horizontal-alignment: center;
-                }
                 Text {
                     text: Car.water-known ? "WATER: " + Car.water-c + "°C" : "WATER: --";
                     color: Tokens.text;
@@ -72,3 +62,4 @@ export component MainWindow inherits Window {
 }
 
 export { Car } from "car.slint";
+export { Settings } from "settings.slint";

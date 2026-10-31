@@ -1,0 +1,48 @@
+import { Tokens } from "tokens.slint";
+
+export component TopBar inherits Rectangle {
+    in property <string> title;
+    in property <string> status;
+
+    height: Tokens.top-bar-h;
+
+    HorizontalLayout {
+        HorizontalLayout {
+            alignment: start;
+            cross-axis-alignment: center;
+            spacing: 14px;
+
+            Text {
+                text: root.title;
+
+                vertical-alignment: center;
+                font-size: Tokens.fs-title;
+                font-weight: 800;
+                font-italic: true;
+                color: Tokens.text;
+            }
+            Rectangle {
+                width: 70px;
+                height: 5px;
+                background: Tokens.accent;
+            }
+            Rectangle {
+                width: 28px;
+                height: 5px;
+                background: Tokens.accent;
+                opacity: 0.5;
+            }
+        }
+
+        Rectangle {horizontal-stretch: 1;}
+
+        Text {
+            text: root.status;
+
+            vertical-alignment: center;
+            font-size: Tokens.fs-label;
+            font-weight: 600;
+            color: Tokens.warn;
+        }
+    }
+}
