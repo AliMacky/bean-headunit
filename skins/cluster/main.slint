@@ -8,24 +8,57 @@ export component MainWindow inherits Window {
     background: Tokens.bg;
 
     VerticalLayout {
-        alignment: center;
-        Text {
-            text: Car.connected ? "" : "NO CORE";
-            color: #E0A030;
-            font-size: 48px;
-            horizontal-alignment: center;
+        padding-left: Tokens.pad-side;
+        padding-right: Tokens.pad-side;
+        padding-top: Tokens.pad-top;
+        padding-bottom: Tokens.pad-bottom;
+        spacing: Tokens.gap-region;
+
+
+        //top bar
+        Rectangle {
+            height: Tokens.top-bar-h;
+            border-width: Tokens.border;
+            border-color: Tokens.line;
+            border-radius: Tokens.radius;
         }
-        Text {
-            text: Car.water-known ? "WATER: " + Car.water-c + "°C" : "WATER: --";
-            color: Tokens.accent;
-            font-size: 48px;
-            horizontal-alignment: center;
+
+        //content
+        Rectangle {
+            height: Tokens.content-h;
+            border-width: Tokens.border;
+            border-color: Tokens.line;
+            border-radius: Tokens.radius;
+
+            VerticalLayout {
+                alignment: center;
+                Text {
+                    text: Car.connected ? "" : "NO CORE";
+                    color: Tokens.warn;
+                    font-size: 48px;
+                    horizontal-alignment: center;
+                }
+                Text {
+                    text: Car.water-known ? "WATER: " + Car.water-c + "°C" : "WATER: --";
+                    color: Tokens.accent;
+                    font-size: 48px;
+                    horizontal-alignment: center;
+                }
+                Text {
+                    text: Car.rpm-known ? "RPM: " + Car.rpm : "RPM: ----";
+                    color: Tokens.accent;
+                    font-size: 48px;
+                    horizontal-alignment: center;
+                }
+            }
         }
-        Text {
-            text: Car.rpm-known ? "RPM: " + Car.rpm : "RPM: ----";
-            color: Tokens.accent;
-            font-size: 48px;
-            horizontal-alignment: center;
+
+        //navbar
+        Rectangle {
+            height: Tokens.nav-h;
+            border-width: Tokens.border;
+            border-color: Tokens.line;
+            border-radius: Tokens.radius;
         }
     }
 }

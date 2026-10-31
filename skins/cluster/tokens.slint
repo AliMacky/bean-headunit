@@ -1,6 +1,38 @@
 import { Car } from "car.slint";
 
 export global Tokens {
-    out property <color> bg: Car.night ? #000000: #F3EEE3;
-    out property <color> accent: Car.night ? #C9A26B: #7A5A2C;
+    // Colors, night : day
+    out property <color> bg: Car.night ? #000000 : #F3EEE3;
+    out property <color> surface: Car.night ? #11110D : #FBF8F1;
+    out property <color> tile: Car.night ? #000000 : #FBF8F1;
+    out property <color> line: Car.night ? #26261F : #CBC2AE;
+    out property <color> text: Car.night ? #F2F2EE : #16140F;
+    out property <color> text-2: Car.night ? #A3A39C : #5E584C;
+    out property <color> accent: Car.night ? #C9A26B : #7A5A2C;
+    out property <color> on-accent: Car.night ? #000000 : #FBF8F1;
+    out property <color> warn: Car.night ? #FFB020 : #9A5B00;
+    out property <color> crit: Car.night ? #FF5C5C : #B3261E;
+    out property <color> seg-off: Car.night ? #22221C : #DDD4C1;
+    out property <color> zone-off: Car.night ? #3A1A12 : #EBCFC6;
+
+    // Text sizes
+    out property <length> fs-hero: 132px;
+    out property <length> fs-value: 72px;
+    out property <length> fs-value-small: 46px;
+    out property <length> fs-title: 26px;
+    out property <length> fs-button: 20px;
+    out property <length> fs-body: 20px;
+    out property <length> fs-label: 16px;
+
+    // Layout: 24 + 56 + 16 + 408 + 16 + 60 + 20 = 600
+    out property <length> pad-side: 32px;
+    out property <length> pad-top: 24px;
+    out property <length> pad-bottom: 20px;
+    out property <length> gap-region: 16px;
+    out property <length> gap-tile: 14px;
+    out property <length> top-bar-h: 56px;
+    out property <length> content-h: 408px;
+    out property <length> nav-h: 60px;
+    out property <length> radius: 6px;
+    out property <length> border: 2px;
 }
