@@ -21,12 +21,12 @@ Only one of `beand` and `bean-sim` runs at a time. Everything on the right side 
 | Logger | `log/` (`bean-log`) | Working | One log format for every program: time since start, level, and where the line came from |
 | Core | `core/` (`beand`) | Planned | OBD, ignition and power, trip logging to SQLite, warnings, settings, later calls and the CarPlay host |
 | UI | `ui/` (`bean-ui`) | Started | Rust and [Slint](https://slint.dev). Connects to the core and shows live values from the skin it was built with |
-| Skins | `skins/cluster/` | Started | The current "90s cluster" design. Night and day and the accent color will be settings inside it |
+| Skins | `skins/cluster/` | Started | The current "90s cluster" design: tokens, night and day, the Saira font, and the Home screen so far |
 | Web dashboard | `web/` | Later | Trip history and diagnostics from another device |
 
 Why separate processes: if the UI crashes or restarts, the core keeps logging and keeps checking warning thresholds. It also means the UI can be developed on a laptop against `bean-sim`, with nothing car-specific running.
 
-Why skins: a skin is a folder of `.slint` files, tokens and fonts that reads all the car state from one Slint global, `Car`, plus its callbacks. Keeping the look in its own folder means a new design doesn't touch the Rust code.
+Why skins: a skin is a folder of `.slint` files, tokens and fonts that reads all the car state from one Slint global, `Car`, and its settings from another, `Settings`. Keeping the look in its own folder means a new design doesn't touch the Rust code.
 
 Skins are compiled into `bean-ui` at build time (`ui/build.rs` runs `slint-build`), not loaded at runtime with the Slint interpreter. I tried the interpreter route on paper and dropped it: switching skins would still need a restart, the Pi would have to compile the skin on every boot, the binary gets bigger, and a typo in a property name would only show up at runtime. Compiled, Rust and the skin are checked against each other by the compiler, and switching skins is a rebuild, which is fine since it rarely happens. For quick design work, Slint's editor live preview redraws a `.slint` file without rebuilding anything.
 
@@ -67,21 +67,53 @@ The socket lives at `/tmp/bean.sock` for now (`SOCKET_PATH`). On the Pi it will 
 
 ## The UI
 
-`bean-ui` opens a fixed 1024x600 window, the size of the 7" screen it's designed for. The markup lives in `skins/cluster/main.slint`, which `ui/build.rs` compiles into Rust code that `main.rs` pulls in with `slint::include_modules!()`. For now it shows water temp and rpm; the real Home screen from the design comes next.
+`bean-ui` opens a fixed 1024x600 window, the size of the 7" screen it's designed for. The look lives in `skins/cluster/`, which `ui/build.rs` compiles into Rust code that `main.rs` pulls in with `slint::include_modules!()`. The Rust side only talks to the skin through two globals, so it doesn't know or care how the screen is laid out.
 
 It runs on two threads:
 
 - The main thread belongs to Slint's event loop, which draws the window and handles input. Slint's UI objects can only be touched from this thread, and Rust enforces that at compile time.
 - A reader thread connects to the socket and reads frames. For each `CarState` it posts a small job back to the main thread (`upgrade_in_event_loop` on a weak handle to the window), and that job sets the window's properties. Slint's bindings then redraw whatever depends on them.
 
-Each value the contract makes optional becomes two properties in the UI, a `-known` flag and the value, since Slint has no `Option`. Unknown values show as `--`, never as 0.
+Each value the contract makes optional becomes two properties in the UI, a `-known` flag and the value, since Slint has no `Option`. Unknown values show as `—`, never as 0.
 
 When the core isn't there, the UI stays up and keeps trying:
 
 - The reader thread tries to connect once a second until it works.
-- If the core goes away mid-stream, the UI shows NO CORE and clears every value to `--`, since a frozen reading is worse than no reading. Then it goes back to retrying.
+- If the core goes away mid-stream, the UI shows NO CORE and clears every value to `—`, since a frozen reading is worse than no reading. Then it goes back to retrying.
 - Failed connects are logged once per kind of error, not every second, so the log stays readable.
 - If the window is closed, the reader thread stops.
+
+Settings come from environment variables for now, read once at startup:
+
+| Variable | Default | What it does |
+| --- | --- | --- |
+| `BEAN_TITLE` | `MIATA` | The name in the top bar. On the Pi it's set in the systemd service file, which stays out of the repo |
+| `BEAN_UNITS` | `f` | `f` or `imperial` for °F, `c` or `metric` for °C. Anything else logs a warning and keeps the default |
+
+They'll move to the Setup screen later.
+
+## The cluster skin
+
+The design comes from a design canvas with every screen in night and day. The skin follows it closely and is split into files:
+
+| File | What's in it |
+| --- | --- |
+| `car.slint` | The `Car` global: everything from the core, as `-known` flags and values, plus `connected` and `night` |
+| `settings.slint` | The `Settings` global: title and units |
+| `tokens.slint` | The `Tokens` global: every color for night and day, type sizes, and the layout numbers |
+| `top_bar.slint`, `nav_bar.slint`, `tile.slint` | Building blocks. They only show what they're given and know nothing about the car |
+| `home.slint` | The Home screen. Screens are the glue: they read `Car` and `Settings` and pass values to the building blocks |
+| `main.slint` | The window: top bar, the current screen, nav bar. It re-exports `Car` and `Settings` so Rust can reach them |
+| `fonts/` | Saira SemiCondensed (Regular, SemiBold, SemiBold Italic, ExtraBold Italic) and its license, embedded into the binary |
+
+Some rules it follows, from the design:
+
+- Colors are never hardcoded in a component. Each color is a token whose value depends on `Car.night`, so one bool from the core repaints the whole screen. The screen starts in night mode so it never flashes white in the dark before the first message arrives.
+- Tan is decoration and buttons, and never means a problem. Amber means it needs attention, red means act now. Only a critical tile gets a red border.
+- Units are converted in the skin (°C to °F, rounded to whole degrees). The core always sends metric.
+- Readings the contract doesn't have yet (intake, fuel, codes) show `—` in the greyed out "no data" state, not a made up number.
+- Warning thresholds belong to the core, so the UI doesn't decide when water is "hot". Tiles have warn and crit states, which get wired up when the core sends alerts.
+- Sizes are in Slint's logical pixels, so pixel density is handled by the scale factor. The content region stretches to whatever's left between the top bar and nav bar, so a taller screen just gives it more room.
 
 ## Logging
 

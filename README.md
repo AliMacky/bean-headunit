@@ -12,7 +12,8 @@ Off-the-shelf stereos have bad interfaces outside of CarPlay, and their firmware
 - [x] An ASCII boot splash of the car that plays from early in boot ([details](docs/splash.md))
 - [x] A shared data contract in Rust and a fake core that streams car data over a Unix socket ([details](docs/architecture.md))
 - [x] A first Slint UI window that shows live water temp and rpm from the core, and reconnects on its own when the core restarts ([details](docs/architecture.md#the-ui))
-- [ ] Skins for the UI (built in at compile time), starting with the real Home screen from the design
+- [x] The cluster skin's Home screen: design tokens, night and day themes, the Saira font, a top bar, a nav bar, and live water temp and volts ([details](docs/architecture.md#the-cluster-skin))
+- [ ] The other screens (Gauges, Trip, Codes, Setup), and tapping the nav bar to switch between them
 - [ ] The core: OBD2 over USB for live data and trouble codes, trip logging, warnings
 - [ ] CarPlay through a USB dongle, as one view inside the UI
 - [ ] Bluetooth hands-free calls when CarPlay isn't running
@@ -43,7 +44,7 @@ cargo run -p bean-ui                        # terminal 2: the UI window with liv
 cargo run -p bean-model --example dump      # or this: prints the live car state
 ```
 
-The UI can start before or after the sim. Without a core it shows NO CORE and keeps retrying.
+The UI can start before or after the sim. Without a core it shows NO CORE and keeps retrying. `BEAN_TITLE` sets the name in the top bar (default `MIATA`), and `BEAN_UNITS=c` shows °C instead of °F.
 
 To build the Pi itself from a blank SD card, follow [docs/pi-setup.md](docs/pi-setup.md).
 
