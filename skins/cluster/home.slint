@@ -1,6 +1,7 @@
 import { Tokens } from "tokens.slint";
 import { Tile, TileState } from "tile.slint";
 import { Car } from "car.slint";
+import { Settings } from "settings.slint";
 
 component SmallTile inherits Tile {
     height: 120px;
@@ -15,15 +16,17 @@ export component Home inherits Rectangle {
     property <length> right-w: root.width - Tokens.gap-region - self.left-w;
     property <length> small-w: (root.right-w - Tokens.gap-tile) / 2;
 
+    property <int> water-shown: Settings.fahrenheit ? round(Car.water-c * 1.8 + 32) : Car.water-c;
+
     HorizontalLayout {
         spacing: Tokens.gap-region;
 
         Tile {
             width: root.left-w;
             label: "WATER TEMP";
-            value: Car.water-known ? "\{Car.water-c}" : "—";
+            value: Car.water-known ? "\{water-shown}" : "—";
             value-size: Tokens.fs-hero;
-            unit: Car.water-known ? "°C" : "";
+            unit: Car.water-known ? Settings.fahrenheit ? "°F" : "°C" : "";
             unit-size: 36px;
             state: Car.water-known ? TileState.ok : TileState.stale;
         }
@@ -36,6 +39,7 @@ export component Home inherits Rectangle {
                 spacing: Tokens.gap-tile;
                 SmallTile {
                     label: "VOLTS";
+                    value: Car.volts-known ? Car.volts.to-fixed(1) : "—";
                     width: root.small-w;
                 }
 

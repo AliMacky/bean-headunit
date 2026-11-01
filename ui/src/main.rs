@@ -25,6 +25,13 @@ fn apply(window: &MainWindow, state: &CarState) {
     } else {
         car.set_rpm_known(false);
     }
+
+    if let Some(r) = state.battery_v {
+        car.set_volts_known(true);
+        car.set_volts(r);
+    } else {
+        car.set_volts_known(false);
+    }
 }
 
 fn set_disconnected(window: &MainWindow) {
@@ -32,6 +39,7 @@ fn set_disconnected(window: &MainWindow) {
 
     car.set_connected(false);
     car.set_water_known(false);
+    car.set_volts_known(false);
     car.set_rpm_known(false);
 }
 
@@ -41,6 +49,13 @@ fn main() -> Result<(), slint::PlatformError> {
     let window = MainWindow::new()?;
     if let Ok(title) = std::env::var("BEAN_TITLE") {
         window.global::<Settings>().set_title(title.into());
+    }
+    if let Ok(units) = std::env::var("BEAN_UNITS") {
+        match units.as_str() {
+            "f" | "imperial" => window.global::<Settings>().set_fahrenheit(true),
+            "c" | "metric" => window.global::<Settings>().set_fahrenheit(false),
+            other => warn!("unknown BEAN_UNITS {other:?}, keeping the default"),
+        }
     }
 
     let weak = window.as_weak();
