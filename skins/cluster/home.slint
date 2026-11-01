@@ -1,0 +1,98 @@
+import { Tokens } from "tokens.slint";
+import { Tile, TileState } from "tile.slint";
+import { Car } from "car.slint";
+
+component SmallTile inherits Tile {
+    height: 120px;
+    value: "—";
+    value-size: Tokens.fs-value-small;
+    unit-size: 20px;
+    state: TileState.stale;
+}
+
+export component Home inherits Rectangle {
+    property <length> left-w: (root.width - Tokens.gap-region) * 0.65;
+    property <length> right-w: root.width - Tokens.gap-region - self.left-w;
+    property <length> small-w: (root.right-w - Tokens.gap-tile) / 2;
+
+    HorizontalLayout {
+        spacing: Tokens.gap-region;
+
+        Tile {
+            width: root.left-w;
+            label: "WATER TEMP";
+            value: Car.water-known ? "\{Car.water-c}" : "—";
+            value-size: Tokens.fs-hero;
+            unit: Car.water-known ? "°C" : "";
+            unit-size: 36px;
+            state: Car.water-known ? TileState.ok : TileState.stale;
+        }
+
+        VerticalLayout {
+            width: root.right-w;
+            spacing: Tokens.gap-tile;
+
+            HorizontalLayout {
+                spacing: Tokens.gap-tile;
+                SmallTile {
+                    label: "VOLTS";
+                    width: root.small-w;
+                }
+
+                SmallTile {
+                    label: "INTAKE";
+                    width: root.small-w;
+                }
+            }
+
+            HorizontalLayout {
+                spacing: Tokens.gap-tile;
+                SmallTile {
+                    label: "FUEL LEFT";
+                    width: root.small-w;
+                }
+
+                SmallTile {
+                    label: "CODES";
+                    width: root.small-w;
+                }
+            }
+
+            Rectangle {
+                background: Tokens.tile;
+                border-width: Tokens.border;
+                border-radius: Tokens.radius;
+                border-color: Tokens.line;
+
+                VerticalLayout {
+                    alignment: center;
+                    padding-left: 18px;
+                    padding-right: 18px;
+                    padding-top: 14px;
+                    padding-bottom: 14px;
+                    spacing: 2px;
+
+                    Text {
+                        text: "NO PHONE";
+                        font-size: Tokens.fs-label;
+                        letter-spacing: 4px;
+                        color: Tokens.text-2;
+                    }
+
+                    Text {
+                        text: "Looking for iPhone";
+                        font-size: 26px;
+                        font-weight: 600;
+                        color: Tokens.text;
+                    }
+
+                    Text {
+                        text: "Ensure Bluetooth and Wi-Fi are enabled";
+                        font-size: 18px;
+                        color: Tokens.text-2;
+                    }
+                }
+            }
+        }
+    }
+}

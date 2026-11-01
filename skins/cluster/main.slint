@@ -9,6 +9,7 @@ import { Tokens } from "tokens.slint";
 import { TopBar } from "top_bar.slint";
 import { NavBar } from "nav_bar.slint";
 import { Tile, TileState } from "tile.slint";
+import { Home } from "home.slint";
 
 export component MainWindow inherits Window {
     default-font-family: "Saira SemiCondensed";
@@ -29,36 +30,8 @@ export component MainWindow inherits Window {
             status: Car.connected ? "" : "NO CORE";
         }
 
-        HorizontalLayout {
-            spacing: Tokens.gap-tile;
-
-            Tile {
-                label: "VOLTS";
-                value: "14.1";
-            }
-
-            Tile {
-                label: "WATER";
-                value: "168";
-                unit: "°F";
-                note: "WARMING UP";
-                state: TileState.warn;
-            }
-
-            Tile {
-                label: "WATER";
-                value: "226";
-                unit: "°F";
-                note: "HOT";
-                state: TileState.crit;
-            }
-
-            Tile {
-                label: "INTAKE";
-                value: "—";
-                note: "NO DATA";
-                state: TileState.stale;
-            }
+        Home {
+            vertical-stretch: 1;
         }
 
         //navbar

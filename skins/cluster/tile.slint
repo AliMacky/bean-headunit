@@ -64,11 +64,15 @@ export component Tile inherits Rectangle {
                     : Tokens.text;
             }
 
-            if root.unit != "": Text {
-                text: root.unit;
-                font-size: root.unit-size;
-                font-weight: 600;
-                color: Tokens.text-2;
+            if root.unit != "": VerticalLayout {
+                padding-bottom: (root.value-size - root.unit-size) * 0.42;
+
+                Text {
+                    text: root.unit;
+                    font-size: root.unit-size;
+                    font-weight: 600;
+                    color: Tokens.text-2;
+                }
             }
         }
     }
