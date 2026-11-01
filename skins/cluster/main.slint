@@ -8,6 +8,7 @@ import { Settings } from "settings.slint";
 import { Tokens } from "tokens.slint";
 import { TopBar } from "top_bar.slint";
 import { NavBar } from "nav_bar.slint";
+import { Tile, TileState } from "tile.slint";
 
 export component MainWindow inherits Window {
     default-font-family: "Saira SemiCondensed";
@@ -26,30 +27,13 @@ export component MainWindow inherits Window {
 
         TopBar { title: Settings.title; status: Car.connected ? "" : "NO CORE"; }
 
-        //content
-        Rectangle {
-            vertical-stretch: 1;
-            border-width: Tokens.border;
-            border-color: Tokens.line;
-            border-radius: Tokens.radius;
+        HorizontalLayout {
+            spacing: Tokens.gap-tile;
 
-            VerticalLayout {
-                alignment: center;
-                Text {
-                    text: Car.water-known ? "WATER: " + Car.water-c + "°C" : "WATER: --";
-                    color: Tokens.text;
-                    horizontal-alignment: center;
-                    font-size: Tokens.fs-value;
-                    font-weight: 800;
-                    font-italic: true;
-                }
-                Text {
-                    text: Car.rpm-known ? "RPM: " + Car.rpm : "RPM: ----";
-                    color: Tokens.text;
-                    font-size: 48px;
-                    horizontal-alignment: center;
-                }
-            }
+            Tile { label: "VOLTS"; value: "14.1"; }
+            Tile { label: "WATER"; value: "168"; unit: "°F"; note: "WARMING UP"; state: TileState.warn; }
+            Tile { label: "WATER"; value: "226"; unit: "°F"; note: "HOT"; state: TileState.crit; }
+            Tile { label: "INTAKE"; value: "—"; note: "NO DATA"; state: TileState.stale; }
         }
 
         //navbar

@@ -1,0 +1,68 @@
+import { Tokens } from "tokens.slint";
+
+export enum TileState { ok, warn, crit, stale }
+
+export component Tile inherits Rectangle {
+    in property <TileState> state: TileState.ok;
+    in property <string> label;
+    in property <string> value;
+    in property <string> unit;
+    in property <string> note;
+    in property <length> value-size: Tokens.fs-value;
+    in property <length> unit-size: 26px;
+
+    background: Tokens.tile;
+    border-width: Tokens.border;
+    border-radius: Tokens.radius;
+    border-color: root.state == TileState.crit ? Tokens.crit : Tokens.line;
+
+    VerticalLayout {
+        padding-top: 18px;
+        padding-bottom: 18px;
+        padding-left: 22px;
+        padding-right: 22px;
+
+        HorizontalLayout {
+            Text {
+                text: root.label;
+                font-size: Tokens.fs-label;
+                letter-spacing: 4px;
+                color: Tokens.text-2;
+            }
+            Rectangle { horizontal-stretch: 1; }
+            if root.note != "": Text {
+                text: root.note;
+                font-size: Tokens.fs-label;
+                font-weight: 600;
+                letter-spacing: 3px;
+                color: root.state == TileState.crit ? Tokens.crit
+                     : root.state == TileState.warn ? Tokens.warn
+                     : Tokens.text-2;
+            }
+        }
+
+        Rectangle { vertical-stretch: 1; }
+
+        HorizontalLayout {
+            alignment: start;
+            cross-axis-alignment: end;
+
+            Text {
+                text: root.value;
+                min-width: self.preferred-width + root.value-size * 0.12;
+                font-size: root.value-size;
+                font-weight: 800;
+                font-italic: true;
+                color: root.state == TileState.crit ? Tokens.crit
+                     : root.state == TileState.stale ? Tokens.text-2
+                     : Tokens.text;
+            }
+            if root.unit != "": Text {
+                text: root.unit;
+                font-size: root.unit-size;
+                font-weight: 600;
+                color: Tokens.text-2;
+            }
+        }
+    }
+}
