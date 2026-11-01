@@ -24,16 +24,41 @@ export component MainWindow inherits Window {
         padding-bottom: Tokens.pad-bottom;
         spacing: Tokens.gap-region;
 
-
-        TopBar { title: Settings.title; status: Car.connected ? "" : "NO CORE"; }
+        TopBar {
+            title: Settings.title;
+            status: Car.connected ? "" : "NO CORE";
+        }
 
         HorizontalLayout {
             spacing: Tokens.gap-tile;
 
-            Tile { label: "VOLTS"; value: "14.1"; }
-            Tile { label: "WATER"; value: "168"; unit: "°F"; note: "WARMING UP"; state: TileState.warn; }
-            Tile { label: "WATER"; value: "226"; unit: "°F"; note: "HOT"; state: TileState.crit; }
-            Tile { label: "INTAKE"; value: "—"; note: "NO DATA"; state: TileState.stale; }
+            Tile {
+                label: "VOLTS";
+                value: "14.1";
+            }
+
+            Tile {
+                label: "WATER";
+                value: "168";
+                unit: "°F";
+                note: "WARMING UP";
+                state: TileState.warn;
+            }
+
+            Tile {
+                label: "WATER";
+                value: "226";
+                unit: "°F";
+                note: "HOT";
+                state: TileState.crit;
+            }
+
+            Tile {
+                label: "INTAKE";
+                value: "—";
+                note: "NO DATA";
+                state: TileState.stale;
+            }
         }
 
         //navbar

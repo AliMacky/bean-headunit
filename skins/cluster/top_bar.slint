@@ -21,11 +21,13 @@ export component TopBar inherits Rectangle {
                 font-italic: true;
                 color: Tokens.text;
             }
+
             Rectangle {
                 width: 70px;
                 height: 5px;
                 background: Tokens.accent;
             }
+
             Rectangle {
                 width: 28px;
                 height: 5px;
@@ -34,7 +36,9 @@ export component TopBar inherits Rectangle {
             }
         }
 
-        Rectangle {horizontal-stretch: 1;}
+        Rectangle {
+            horizontal-stretch: 1;
+        }
 
         Text {
             text: root.status;

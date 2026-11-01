@@ -29,19 +29,25 @@ export component Tile inherits Rectangle {
                 letter-spacing: 4px;
                 color: Tokens.text-2;
             }
-            Rectangle { horizontal-stretch: 1; }
+
+            Rectangle {
+                horizontal-stretch: 1;
+            }
+
             if root.note != "": Text {
                 text: root.note;
                 font-size: Tokens.fs-label;
                 font-weight: 600;
                 letter-spacing: 3px;
                 color: root.state == TileState.crit ? Tokens.crit
-                     : root.state == TileState.warn ? Tokens.warn
-                     : Tokens.text-2;
+                    : root.state == TileState.warn ? Tokens.warn
+                    : Tokens.text-2;
             }
         }
 
-        Rectangle { vertical-stretch: 1; }
+        Rectangle {
+            vertical-stretch: 1;
+        }
 
         HorizontalLayout {
             alignment: start;
@@ -54,9 +60,10 @@ export component Tile inherits Rectangle {
                 font-weight: 800;
                 font-italic: true;
                 color: root.state == TileState.crit ? Tokens.crit
-                     : root.state == TileState.stale ? Tokens.text-2
-                     : Tokens.text;
+                    : root.state == TileState.stale ? Tokens.text-2
+                    : Tokens.text;
             }
+
             if root.unit != "": Text {
                 text: root.unit;
                 font-size: root.unit-size;

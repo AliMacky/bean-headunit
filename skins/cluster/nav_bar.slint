@@ -2,7 +2,7 @@ import { Tokens } from "tokens.slint";
 
 export component NavBar inherits Rectangle {
     in property <int> active;
-    
+
     height: Tokens.nav-h;
 
     HorizontalLayout {
@@ -14,7 +14,7 @@ export component NavBar inherits Rectangle {
             border-radius: Tokens.radius;
             border-color: Tokens.line;
             background: root.active == i ? Tokens.surface : transparent;
-            
+
             Text {
                 font-size: Tokens.fs-button;
                 font-italic: true;
@@ -23,7 +23,7 @@ export component NavBar inherits Rectangle {
                 text: name;
                 letter-spacing: 2px;
             }
-                
+
             Rectangle {
                 width: 36px;
                 height: 4px;
@@ -39,7 +39,7 @@ export component NavBar inherits Rectangle {
             border-radius: Tokens.radius;
             border-color: Tokens.accent;
             background: Tokens.accent;
-            
+
             Text {
                 font-size: Tokens.fs-button;
                 font-italic: true;
@@ -50,5 +50,5 @@ export component NavBar inherits Rectangle {
                 text: "CARPLAY";
             }
         }
-    }    
+    }
 }
