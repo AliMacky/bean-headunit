@@ -42,7 +42,7 @@ fn main() -> Result<(), slint::PlatformError> {
     if let Ok(title) = std::env::var("BEAN_TITLE") {
         window.global::<Settings>().set_title(title.into());
     }
-    
+
     let weak = window.as_weak();
 
     thread::spawn(move || {

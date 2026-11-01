@@ -1,0 +1,54 @@
+import { Tokens } from "tokens.slint";
+
+export component NavBar inherits Rectangle {
+    in property <int> active;
+    
+    height: Tokens.nav-h;
+
+    HorizontalLayout {
+        spacing: 10px;
+
+        for name[i] in ["HOME", "GAUGES", "TRIP", "CODES", "SETUP"]: Rectangle {
+            width: (root.width - 5 * 10px) / 6;
+            border-width: Tokens.border;
+            border-radius: Tokens.radius;
+            border-color: Tokens.line;
+            background: root.active == i ? Tokens.surface : transparent;
+            
+            Text {
+                font-size: Tokens.fs-button;
+                font-italic: true;
+                font-weight: root.active == i ? 800 : 600;
+                color: root.active == i ? Tokens.text : Tokens.text-2;
+                text: name;
+                letter-spacing: 2px;
+            }
+                
+            Rectangle {
+                width: 36px;
+                height: 4px;
+                x: (parent.width - self.width) / 2;
+                y: parent.height - 14px;
+                background: i == root.active ? Tokens.accent : transparent;
+            }
+        }
+
+        Rectangle {
+            width: (root.width - 5 * 10px) / 6;
+            border-width: Tokens.border;
+            border-radius: Tokens.radius;
+            border-color: Tokens.accent;
+            background: Tokens.accent;
+            
+            Text {
+                font-size: Tokens.fs-button;
+                font-italic: true;
+                font-weight: 800;
+                color: Tokens.on-accent;
+                letter-spacing: 2px;
+
+                text: "CARPLAY";
+            }
+        }
+    }    
+}

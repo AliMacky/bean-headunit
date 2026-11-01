@@ -7,6 +7,7 @@ import { Car } from "car.slint";
 import { Settings } from "settings.slint";
 import { Tokens } from "tokens.slint";
 import { TopBar } from "top_bar.slint";
+import { NavBar } from "nav_bar.slint";
 
 export component MainWindow inherits Window {
     default-font-family: "Saira SemiCondensed";
@@ -27,7 +28,7 @@ export component MainWindow inherits Window {
 
         //content
         Rectangle {
-            height: Tokens.content-h;
+            vertical-stretch: 1;
             border-width: Tokens.border;
             border-color: Tokens.line;
             border-radius: Tokens.radius;
@@ -52,11 +53,8 @@ export component MainWindow inherits Window {
         }
 
         //navbar
-        Rectangle {
-            height: Tokens.nav-h;
-            border-width: Tokens.border;
-            border-color: Tokens.line;
-            border-radius: Tokens.radius;
+        NavBar {
+            active: 0;
         }
     }
 }
