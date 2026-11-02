@@ -10,6 +10,7 @@ Conflicts=shutdown.target
 [Service]
 Type=simple
 ExecStart=/usr/bin/python3 /usr/local/share/bean-headunit/splash/splash.py
+EnvironmentFile=-/etc/bean-headunit/bean.env
 Environment=PYTHONIOENCODING=utf-8
 Environment=PYTHONUNBUFFERED=1
 # Seconds to hold the empty scene before he drives in, so the monitor has
