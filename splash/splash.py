@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mr. Bean boot splash.
+"""Bean boot splash.
 
 Plays the pre-rendered animation from frames/ (made by build_frames.py),
 types the tagline, then loops the idle part until systemd stops it when the
@@ -21,6 +21,7 @@ Settings (environment variables, also set in the service file):
   SPLASH_PREROLL=2.0         seconds to hold the empty scene before he drives in
   SPLASH_WAIT_MAX=10         longest to wait for the screen to be ready
   SPLASH_ONCE=1              exit after the intro instead of looping
+  SPLASH_TAGLINE=...         the line typed under the car
 """
 
 import glob
@@ -34,7 +35,7 @@ import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FRAME_DIR = os.path.join(HERE, "frames")
-TAGLINE = "2001 Mazda Miata SE  /  British Racing Green"
+TAGLINE = os.environ.get("SPLASH_TAGLINE", "Mazda MX-5 Miata")
 STAR_DENSITY = 0.02     # share of sky cells above the animation that get a star
 
 # Color codes in the frames -> ANSI.

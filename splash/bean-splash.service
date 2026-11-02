@@ -1,5 +1,5 @@
 [Unit]
-Description=Mr. Bean boot splash
+Description=Boot Splash
 # Start early: once filesystems are mounted and the console font is set up
 # (setting the font clears the screen), without waiting for the network.
 DefaultDependencies=no
@@ -9,8 +9,7 @@ Conflicts=shutdown.target
 
 [Service]
 Type=simple
-# @SPLASH_DIR@ gets replaced with the real folder when you install it (see docs/pi-setup.md).
-ExecStart=/usr/bin/python3 @SPLASH_DIR@/splash.py
+ExecStart=/usr/bin/python3 /usr/local/share/bean-headunit/splash/splash.py
 Environment=PYTHONIOENCODING=utf-8
 Environment=PYTHONUNBUFFERED=1
 # Seconds to hold the empty scene before he drives in, so the monitor has
