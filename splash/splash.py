@@ -32,6 +32,7 @@ import random
 import signal
 import sys
 import time
+import socket
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FRAME_DIR = os.path.join(HERE, "frames")
@@ -243,6 +244,19 @@ def play(screen, frames, fps, first_index):
 def on_sigterm(signum, frame):
     raise SystemExit(0)
 
+def notify_ready():
+    """Tell systemd the intro is done, so services ordered after the splash can start."""
+    path = os.environ.get("NOTIFY_SOCKET")
+    if not path:
+        return  # not running under systemd, e.g. testing in a terminal
+    if path.startswith("@"):
+        path = "\0" + path[1:]  # abstract socket: Python wants a null byte, not @
+    try:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM) as s:
+            s.sendto(b"READY=1", path)
+    except OSError:
+        pass  # never let the splash crash over this, the UI starts anyway
+
 
 def main():
     signal.signal(signal.SIGTERM, on_sigterm)
@@ -261,6 +275,7 @@ def main():
 
     play(screen, frames[:loop_from], fps, 0)
     screen.tagline()
+    notify_ready()
     if os.environ.get("SPLASH_ONCE"):
         return
     loop = frames[loop_from:] or frames[-1:]
