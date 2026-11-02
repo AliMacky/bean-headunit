@@ -83,7 +83,7 @@ When the core isn't there, the UI stays up and keeps trying:
 - Failed connects are logged once per kind of error, not every second, so the log stays readable.
 - If the window is closed, the reader thread stops.
 
-Settings come from environment variables for now, read once at startup:
+Settings come from environment variables for now, read once at startup. On the Pi they live in `/etc/bean-headunit/bean.env`, which the services load:
 
 | Variable | Default | What it does |
 | --- | --- | --- |
@@ -114,6 +114,25 @@ Some rules it follows, from the design:
 - Readings the contract doesn't have yet (intake, fuel, codes) show `—` in the greyed out "no data" state, not a made up number.
 - Warning thresholds belong to the core, so the UI doesn't decide when water is "hot". Tiles have warn and crit states, which get wired up when the core sends alerts.
 - Sizes are in Slint's logical pixels, so pixel density is handled by the scale factor. The content region stretches to whatever's left between the top bar and nav bar, so a taller screen just gives it more room.
+
+## On the Pi
+
+The Pi runs Pi OS Lite with no desktop. `bean-ui` uses Slint's linuxkms backend, which draws straight to the screen through the kernel's display driver and reads input from the kernel, so one app owns the whole screen. It's enabled only on Linux (a target-specific feature in `ui/Cargo.toml`) and picked with `SLINT_BACKEND=linuxkms` in the service.
+
+`system/install.sh` installs everything to the usual places, so nothing depends on a username or where the repo was cloned:
+
+| What | Where |
+| --- | --- |
+| `bean-ui`, `bean-sim` | `/usr/local/bin/` |
+| The splash | `/usr/local/share/bean-headunit/splash/` |
+| Settings | `/etc/bean-headunit/bean.env` (only created if missing, never committed) |
+| `bean-splash`, `bean-ui`, `bean-sim` services | `/etc/systemd/system/` |
+
+The services run as `bean`, a system user with no login and no home folder that's only in the `video` and `input` groups. If the UI ever had an exploitable bug, that's all it could reach.
+
+Boot order: `bean-splash` starts early and tells systemd it's ready once its intro is done. `bean-ui` is ordered after it and conflicts with it, so the UI starts after the intro and stopping the splash is automatic. `bean-ui` has `Restart=always`, so the screen never stays black. It doesn't depend on `bean-sim` or the core at all, because it already retries until one shows up.
+
+Logs from every service go to the journal: `journalctl -u bean-ui -f`.
 
 ## Logging
 

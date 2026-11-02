@@ -8,7 +8,7 @@ Everything on screen is text. The trees, stars, road, dust, and headlight beams 
 
 All the drawing happens ahead of time in `build_frames.py`, so the Pi doesn't do any image work at boot. `splash.py` just loads one file and prints text, which lets it start very early.
 
-To install it on a Pi, see [steps 6 to 8 of the setup guide](pi-setup.md#6-get-this-repo).
+It's installed by `system/install.sh`, see [step 7 of the setup guide](pi-setup.md#7-install-the-head-unit).
 
 ## Files
 
@@ -16,7 +16,7 @@ To install it on a Pi, see [steps 6 to 8 of the setup guide](pi-setup.md#6-get-t
 splash/
   splash.py                plays the boot animation (plain Python, no packages)
   frames/                  the pre-rendered animation
-  mrbean-splash.service    systemd unit that starts it at boot
+  bean-splash.service      systemd unit that starts it at boot
   build_frames.py          renders the animation into frames/
   verify_frames.py         checks rendered frames for glitches
   preview_gif.py           makes a GIF from a frames file
@@ -25,7 +25,7 @@ splash/
 
 ## Making it yours
 
-The name, timing, colors, and ASCII character sets are at the top of `build_frames.py` (the name is `NAME`). The line under the animation is `TAGLINE` at the top of `splash.py`, and changing it doesn't need a rebuild. The car is traced from a side photo of an NB with the hardtop; changing its shape means editing the coordinates in the car section of `build_frames.py`.
+The name, timing, colors, and ASCII character sets are at the top of `build_frames.py` (the name is `NAME`). The line under the animation is the `SPLASH_TAGLINE` setting (see below), so changing it doesn't need a rebuild. The car is traced from a side photo of an NB with the hardtop; changing its shape means editing the coordinates in the car section of `build_frames.py`.
 
 Rebuilding is easiest on your own computer:
 
@@ -37,7 +37,7 @@ python3 verify_frames.py frames/*.json      # check for glitches
 python3 preview_screen.py screen.gif        # see the whole screen as the Pi will show it
 ```
 
-Then commit the new `frames/*.json` and `git pull` on the Pi. You don't need to reinstall the service.
+Then commit the new `frames/*.json`, `git pull` on the Pi, and run `system/install.sh` again to copy them into place.
 
 `preview_screen.py` assumes a 1080p screen (240 x 67 characters). For another size, pass it in: `python3 preview_screen.py screen.gif 320 90` for a 1440p screen. Run `stty size` on the Pi's own screen to see yours (it prints rows, then columns).
 
@@ -47,10 +47,11 @@ For a solid white car on the console instead of an ASCII one, build with `python
 
 ## Settings
 
-Set these as `Environment=` lines in `mrbean-splash.service`. After changing one, run the install command from [step 7](pi-setup.md#7-install-the-boot-splash) again, then `sudo systemctl daemon-reload`.
+Put these in `/etc/bean-headunit/bean.env` on the Pi, one `NAME=value` per line. They override the defaults in the service file and take effect on the next boot.
 
 | Setting | Default | What it does |
 | --- | --- | --- |
+| `SPLASH_TAGLINE` | `Mazda MX-5 Miata` | The line typed under the car after it stops |
 | `SPLASH_PREROLL` | `2.0` | Seconds to hold the empty scene before the car drives in, so the screen has time to wake up. The service file sets it to `0.3`, tuned for my current display |
 | `SPLASH_WAIT_MAX` | `10` | Longest to wait for the screen to be ready before starting anyway |
 | `SPLASH_STYLE` | auto | `half` for the console version, `braille` for the terminal version |
@@ -64,4 +65,4 @@ If the start gets cut off, your screen is slow to wake up after the Pi switches 
 
 You might occasionally catch a tearing line. The Linux console has no vsync. The splash only redraws characters that changed and never clears a line, which hides almost all of it. A graphical UI won't have this.
 
-The splash loops until something stops it. When there's a real UI, its service can stop the splash by adding `Conflicts=mrbean-splash.service` and `After=mrbean-splash.service` to its `[Unit]` section.
+The splash loops until the UI takes over. It's a `Type=notify` service: once the car has stopped and the tagline is typed, it tells systemd it's ready (`READY=1` on the socket in `NOTIFY_SOCKET`). `bean-ui.service` is ordered `After=` it and `Conflicts=` with it, so the UI starts only after the intro is done, and starting the UI stops the splash. If boot is slow, the splash keeps looping its idle part until the UI is ready. If the splash fails, the UI starts anyway, because `After=` only sets the order.

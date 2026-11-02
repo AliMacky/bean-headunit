@@ -13,6 +13,7 @@ Off-the-shelf stereos have bad interfaces outside of CarPlay, and their firmware
 - [x] A shared data contract in Rust and a fake core that streams car data over a Unix socket ([details](docs/architecture.md))
 - [x] A first Slint UI window that shows live water temp and rpm from the core, and reconnects on its own when the core restarts ([details](docs/architecture.md#the-ui))
 - [x] The cluster skin's Home screen: design tokens, night and day themes, the Saira font, a top bar, a nav bar, and live water temp and volts ([details](docs/architecture.md#the-cluster-skin))
+- [x] Runs on the Pi without a desktop: the UI takes over from the splash at boot, as its own locked-down user, installed with one script ([details](docs/pi-setup.md#7-install-the-head-unit))
 - [ ] The other screens (Gauges, Trip, Codes, Setup), and tapping the nav bar to switch between them
 - [ ] The core: OBD2 over USB for live data and trouble codes, trip logging, warnings
 - [ ] CarPlay through a USB dongle, as one view inside the UI
@@ -46,7 +47,7 @@ cargo run -p bean-model --example dump      # or this: prints the live car state
 
 The UI can start before or after the sim. Without a core it shows NO CORE and keeps retrying. `BEAN_TITLE` sets the name in the top bar (default `MIATA`), and `BEAN_UNITS=c` shows °C instead of °F.
 
-To build the Pi itself from a blank SD card, follow [docs/pi-setup.md](docs/pi-setup.md).
+To build the Pi itself from a blank SD card, follow [docs/pi-setup.md](docs/pi-setup.md). After the OS setup, it's one script: `system/install.sh`.
 
 ## What's in here
 
@@ -59,13 +60,14 @@ bean-headunit/
   skins/            the UI's look, one folder per skin (cluster/ is the current one)
   log/              bean-log: the shared logger every program uses
   splash/           the boot animation (Python) and its systemd service
+  system/           install script, systemd services, and the example config
   docs/             setup guide, architecture, boot time, splash
   notes/            raw boot time measurements
 ```
 
 ## Docs
 
-- [Pi setup](docs/pi-setup.md): from a blank SD card to booting into the splash
+- [Pi setup](docs/pi-setup.md): from a blank SD card to booting into the splash and the UI
 - [Architecture](docs/architecture.md): the core and UI split, the contract, and the wire format
 - [Boot time](docs/boot-time.md): measurements, what helped, and what didn't
 - [Boot splash](docs/splash.md): how it works, rebuilding it, and its settings

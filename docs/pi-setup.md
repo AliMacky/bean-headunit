@@ -1,6 +1,6 @@
 # Setting up the Pi from scratch
 
-This takes a blank microSD card to a Pi that boots fast, straight into the boot splash. It works on a Pi 4 or Pi 5, on Raspberry Pi OS Bookworm or Trixie. For why each step is here and what it saves, see [boot-time.md](boot-time.md).
+This takes a blank microSD card to a Pi that boots fast, plays the boot splash, and then hands the screen to the head unit UI. It works on a Pi 4 or Pi 5, on Raspberry Pi OS Bookworm or Trixie. For why each step is here and what it saves, see [boot-time.md](boot-time.md).
 
 You'll need:
 
@@ -127,7 +127,22 @@ sudo reboot
 
 Then run `systemd-analyze` again to see the difference. If you set up etckeeper, commit: `sudo etckeeper commit "Trim boot services"`.
 
-## 6. Get this repo
+## 6. Install Rust and get this repo
+
+The head unit is written in Rust and builds on the Pi itself. Install Rust with [rustup](https://rustup.rs), taking the default options:
+
+```
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source ~/.cargo/env
+```
+
+Then the libraries the UI needs to draw straight to the screen and read input without a desktop:
+
+```
+sudo apt install -y build-essential pkg-config libudev-dev libinput-dev libxkbcommon-dev libgbm-dev libdrm-dev libfontconfig-dev
+```
+
+And the code:
 
 ```
 git clone https://github.com/AliMacky/bean-headunit.git ~/bean-headunit
@@ -139,23 +154,55 @@ To try the animation over SSH, play it once and exit (make your terminal window 
 SPLASH_ONCE=1 python3 ~/bean-headunit/splash/splash.py
 ```
 
-## 7. Install the boot splash
+## 7. Install the head unit
 
-The service file has a placeholder, `@SPLASH_DIR@`, for where the splash lives. This fills it in and installs it:
+One script does the rest. Run it as your normal user, not with `sudo`. It asks for your password when it needs it.
 
 ```
-sed "s#@SPLASH_DIR@#$HOME/bean-headunit/splash#" ~/bean-headunit/splash/mrbean-splash.service | sudo tee /etc/systemd/system/mrbean-splash.service > /dev/null
+~/bean-headunit/system/install.sh --sim
 ```
 
-Then turn off the login prompt on the Pi's screen, otherwise it draws over the animation. You can still log in on the Pi itself with Ctrl+Alt+F2, and SSH isn't affected.
+It:
+
+- builds `bean-ui` and `bean-sim` and installs them to `/usr/local/bin`
+- creates a `bean` system user to run them. It can't log in and is only allowed to use the screen and input devices
+- installs the splash to `/usr/local/share/bean-headunit/splash`
+- creates `/etc/bean-headunit/bean.env` from `system/bean.env.example`, if you don't have one yet
+- installs and enables the `bean-splash` and `bean-ui` services, plus `bean-sim` with `--sim`
+- commits `/etc` if you set up etckeeper
+
+`--sim` also starts the fake core at boot, so the UI has data to show at your desk. Leave it off once the real core exists. The first build takes a while; later runs are quick.
+
+Then set your own values in the config. It's yours and stays on the Pi:
+
+```
+sudo nano /etc/bean-headunit/bean.env
+```
+
+| Setting | Default | What it does |
+| --- | --- | --- |
+| `BEAN_TITLE` | `MIATA` | Name in the UI's top bar |
+| `BEAN_UNITS` | `f` | `f` for °F, `c` for °C |
+| `SLINT_SCALE_FACTOR` | `1` | Scales the UI, which is designed for 1024x600. Around 1.8 fills a 1440p display |
+| `SPLASH_TAGLINE` | `Mazda MX-5 Miata` | Line typed under the car on the splash |
+
+Any splash setting from [splash.md](splash.md#settings) can go here too.
+
+Turn off the login prompt on the Pi's screen, otherwise it draws over the splash. You can still log in on the Pi itself with Ctrl+Alt+F2, and SSH isn't affected.
 
 ```
 sudo systemctl disable getty@tty1.service
-sudo systemctl daemon-reload
-sudo systemctl enable --now mrbean-splash.service
+sudo reboot
 ```
 
-It should start playing on the screen right away. With etckeeper: `sudo etckeeper commit "Install boot splash"`.
+On boot, the splash plays, the car drives in and the tagline types out, and then the UI takes over. If the UI doesn't show up, `systemctl status bean-ui` and `journalctl -u bean-ui -b` say why.
+
+To update later, pull and run the script again. It keeps your config and only replaces what it installed:
+
+```
+cd ~/bean-headunit && git pull && system/install.sh --sim
+sudo systemctl restart bean-ui
+```
 
 ## 8. Hide the boot text
 
@@ -191,4 +238,4 @@ You don't lose the filesystem check. The initramfs used to check the root partit
 
 To undo it, run `sudo git -C /boot/firmware revert --no-edit HEAD` and reboot. If the Pi won't boot, put the card in your computer, open `config.txt` on the boot partition, and change `auto_initramfs=0` back to `1`.
 
-That's it. From now on the Pi boots straight into the animation. To change how the splash looks or behaves, see [splash.md](splash.md).
+That's it. From now on the Pi boots straight into the splash and then the UI. To change how the splash looks or behaves, see [splash.md](splash.md).
