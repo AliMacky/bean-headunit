@@ -47,6 +47,18 @@ fn main() -> Result<(), slint::PlatformError> {
     bean_log::init().expect("Failed to init logger");
 
     let window = MainWindow::new()?;
+
+    let mut logged = false;
+    let notifier = window.window().set_rendering_notifier(move |state, _| {
+        if !logged && matches!(state, slint::RenderingState::AfterRendering) {
+            info!("first frame drawn");
+            logged = true;
+        }
+    });
+    if let Err(e) = notifier {
+        warn!("can't detect the first frame: {e}");
+    }
+
     if let Ok(title) = std::env::var("BEAN_TITLE") {
         window.global::<Settings>().set_title(title.into());
     }
