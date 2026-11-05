@@ -128,9 +128,13 @@ The Pi runs Pi OS Lite with no desktop. `bean-ui` uses Slint's linuxkms backend,
 | Settings | `/etc/bean-headunit/bean.env` (only created if missing, never committed) |
 | `bean-splash`, `bean-ui`, `bean-sim` services | `/etc/systemd/system/` |
 
-The services run as `bean`, a system user with no login and no home folder that's only in the `video` and `input` groups. If the UI ever had an exploitable bug, that's all it could reach.
+The services run as `bean`, a system user with no login and no home folder that's only in the `video`, `render` and `input` groups (screen, GPU, touch and keys). If the UI ever had an exploitable bug, that's all it could reach.
 
-Boot order: `bean-splash` starts early and tells systemd it's ready once its intro is done. `bean-ui` is ordered after it and conflicts with it, so the UI starts after the intro and stopping the splash is automatic. `bean-ui` has `Restart=always`, so the screen never stays black. It doesn't depend on `bean-sim` or the core at all, because it already retries until one shows up.
+Boot order: `bean-splash` starts early and tells systemd it's ready once its intro is done. `bean-ui` is ordered after it, so it starts then. The UI is a `Type=notify` service too: it reports ready from a Slint rendering callback right after its first frame (with the `sd-notify` crate), and its `ExecStartPost=+systemctl --no-block stop bean-splash` stops the splash at that point. The `+` runs that one command with full privileges while the UI itself stays unprivileged. If the renderer can't report frames, the UI reports ready right away instead, so it never gets stuck.
+
+`bean-ui` has `Restart=always`, backing off from 1 to 10 seconds, and no start limit (`StartLimitIntervalSec=0`), so it keeps trying forever, for example when the screen powers up after the Pi. It doesn't depend on `bean-sim` or the core at all, because it already retries until one shows up. `CacheDirectory=` gives it `/var/cache/bean-ui` for the font and shader caches, since `bean` has no home folder.
+
+It draws with Slint's FemtoVG renderer on the GPU through OpenGL ES. If the OpenGL libraries are missing, Slint quietly falls back to its software renderer, which works but drew 1920x1080 at about 1 s to first frame and used close to a full CPU core; FemtoVG gets the first frame in about 0.2 s warm.
 
 Logs from every service go to the journal: `journalctl -u bean-ui -f`.
 

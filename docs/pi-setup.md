@@ -136,10 +136,10 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source ~/.cargo/env
 ```
 
-Then the libraries the UI needs to draw straight to the screen and read input without a desktop:
+Then the libraries the UI needs to draw straight to the screen and read input without a desktop. The last three are the GPU's OpenGL libraries, which Pi OS Lite doesn't include. Without them the UI still runs, but draws on the CPU, which is several times slower and uses a whole core:
 
 ```
-sudo apt install -y build-essential pkg-config libudev-dev libinput-dev libxkbcommon-dev libgbm-dev libdrm-dev libfontconfig-dev
+sudo apt install -y build-essential pkg-config libudev-dev libinput-dev libxkbcommon-dev libgbm-dev libdrm-dev libfontconfig-dev libegl1 libegl-mesa0 libgles2
 ```
 
 And the code:
@@ -165,7 +165,7 @@ One script does the rest. Run it as your normal user, not with `sudo`. It asks f
 It:
 
 - builds `bean-ui` and `bean-sim` and installs them to `/usr/local/bin`
-- creates a `bean` system user to run them. It can't log in and is only allowed to use the screen and input devices
+- creates a `bean` system user to run them. It can't log in and is only allowed to use the screen, the GPU and input devices
 - installs the splash to `/usr/local/share/bean-headunit/splash`
 - creates `/etc/bean-headunit/bean.env` from `system/bean.env.example`, if you don't have one yet
 - installs and enables the `bean-splash` and `bean-ui` services, plus `bean-sim` with `--sim`
@@ -195,7 +195,9 @@ sudo systemctl disable getty@tty1.service
 sudo reboot
 ```
 
-On boot, the splash plays, the car drives in and the tagline types out, and then the UI takes over. If the UI doesn't show up, `systemctl status bean-ui` and `journalctl -u bean-ui -b` say why.
+On boot, the splash plays, the car drives in and the tagline types out, and then the UI takes over. If the UI doesn't show up, `systemctl status bean-ui` and `journalctl -u bean-ui -b` say why. The journal should say `Using FemtoVG OpenGL renderer`. If it says `Software renderer`, the OpenGL libraries above are missing.
+
+The UI needs a screen connected to start. Without one it keeps retrying, every 10 seconds at most, and comes up as soon as a screen appears.
 
 To update later, pull and run the script again. It keeps your config and only replaces what it installed:
 

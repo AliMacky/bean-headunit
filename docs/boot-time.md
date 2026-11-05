@@ -28,11 +28,26 @@ On the Pi 5, booting without the initramfs ([step 9](pi-setup.md#9-skip-the-init
 
 The Pi 5 number was measured before the splash's preroll dropped from 2.0 s to 0.3 s and before the initramfs change, so it should be lower now. I'll remeasure on the real car screen, since how fast the screen wakes up is a big part of it.
 
+## Boot to the UI
+
+Once the UI runs at boot, the number that counts is when its first frame appears. `bean-ui` logs `first frame drawn`, and `journalctl -b -o short-monotonic -u bean-splash -u bean-ui` puts it on one timeline with the splash, in seconds since the kernel started. Pi 5, 1080p display, cold boot:
+
+| Seconds after kernel start | What happens |
+| --- | --- |
+| 2.7 | Splash starts |
+| 11.5 | Intro done, UI starts |
+| 12.9 | UI draws its first frame |
+| 12.95 | Splash stopped |
+
+So about 2.7 s of system boot, 8.7 s of intro, and 1.4 s for the UI to start cold. On a warm restart the UI gets to its first frame in about 0.2 s, so most of the cold start is reading the program from the SD card for the first time. The splash and the UI overlap by about 50 ms, so the screen never goes blank between them.
+
 ## What helped
 
 - Turning off services a car doesn't need at boot (`NetworkManager-wait-online`, `cloud-init`, `rpi-eeprom-update`, `e2scrub_reap`). This was the biggest single win: Pi 5 userspace went from 13.5 s to 3.4 s.
 - Starting the splash as soon as local filesystems are mounted, without waiting for the network or the normal boot ordering.
 - Skipping the initramfs, which halved the kernel phase and removed the two `e2fsck` lines it printed over the boot screen.
+- Installing the GPU's OpenGL libraries (`libegl1`, `libegl-mesa0`, `libgles2`), which Pi OS Lite leaves out. Without them Slint falls back to drawing on the CPU: about 1 s to the first frame instead of 0.2 s warm, and close to a full core busy just keeping the screen updated.
+- Giving the UI a cache folder (`CacheDirectory=` in its service), so fontconfig and Mesa can keep their caches instead of starting from scratch on every launch.
 - A shorter preroll (`SPLASH_PREROLL` 0.3 s). The preroll is the empty scene held before the car drives in, so a slow screen doesn't miss the start. It's tuned for my current display and needs a recheck on the real one.
 
 ## Tried and dropped
@@ -43,6 +58,9 @@ The Pi 5 number was measured before the splash's preroll dropped from 2.0 s to 0
 - Redirecting `fsck` output to hide the boot-screen lines. They turned out to come from the initramfs, so skipping the initramfs fixed it instead.
 
 ## Ideas for later
+
+- The intro is most of the time to the UI. A shorter animation, or only playing the full one now and then, would get the UI up several seconds sooner.
+- Stripping debug info from the release build (`strip = true` in `[profile.release]`). The UI binary is about 30 MB, mostly debug info, and all of it is read from the SD card on a cold start.
 
 - The splash still waits for the boot partition's filesystem check, which takes about 0.65 s.
 - `DISABLE_HDMI=1` in the bootloader EEPROM config, which skips the bootloader's own HDMI output.
