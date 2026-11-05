@@ -1,15 +1,22 @@
 [Unit]
 Description=Head unit UI
-Conflicts=bean-splash.service
 After=bean-splash.service
+StartLimitIntervalSec=0
 
 [Service]
+Type=notify
+NotifyAccess=main
 User=bean
 Environment=SLINT_BACKEND=linuxkms
+Environment=XDG_CACHE_HOME=/var/cache/bean-ui
 EnvironmentFile=-/etc/bean-headunit/bean.env
+CacheDirectory=bean-ui
 ExecStart=/usr/local/bin/bean-ui
+ExecStartPost=+/usr/bin/systemctl --no-block stop bean-splash.service
 Restart=always
 RestartSec=1
+RestartSteps=5
+RestartMaxDelaySec=10
 
 [Install]
 WantedBy=multi-user.target

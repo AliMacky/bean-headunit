@@ -28,8 +28,9 @@ cargo build --release -p bean-ui -p bean-sim --manifest-path "$REPO/Cargo.toml"
 
 echo "Creating the bean user..."
 if ! id bean &>/dev/null; then
-    sudo useradd --system --no-create-home --shell /usr/sbin/nologin --groups video,input bean
+    sudo useradd --system --no-create-home --shell /usr/sbin/nologin bean
 fi
+sudo usermod -aG video,input,render bean
 
 echo "Installing programs..."
 sudo install -m 755 "$REPO/target/release/bean-ui" "$REPO/target/release/bean-sim" /usr/local/bin/

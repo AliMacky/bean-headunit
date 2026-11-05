@@ -482,6 +482,7 @@ dependencies = [
  "bean-log",
  "bean-model",
  "log",
+ "sd-notify",
  "slint",
  "slint-build",
 ]
@@ -3862,6 +3863,15 @@ dependencies = [
  "memmap2",
  "smithay-client-toolkit",
  "tiny-skia 0.11.4",
+]
+
+[[package]]
+name = "sd-notify"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3e4ef7359e694bfaf1dd27a30f9d760b54c00dfae9f19bd0c05a39bc9128fe76"
+dependencies = [
+ "libc",
 ]
 
 [[package]]

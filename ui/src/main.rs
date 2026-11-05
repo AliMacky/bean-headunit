@@ -43,6 +43,12 @@ fn set_disconnected(window: &MainWindow) {
     car.set_rpm_known(false);
 }
 
+fn tell_systemd_ready() {
+    if let Err(e) = sd_notify::notify(&[sd_notify::NotifyState::Ready]) {
+        warn!("couldn't tell systemd we're ready: {e}");
+    }
+}
+
 fn main() -> Result<(), slint::PlatformError> {
     bean_log::init().expect("Failed to init logger");
 
@@ -53,10 +59,12 @@ fn main() -> Result<(), slint::PlatformError> {
         if !logged && matches!(state, slint::RenderingState::AfterRendering) {
             info!("first frame drawn");
             logged = true;
+            tell_systemd_ready();
         }
     });
     if let Err(e) = notifier {
         warn!("can't detect the first frame: {e}");
+        tell_systemd_ready();
     }
 
     if let Ok(title) = std::env::var("BEAN_TITLE") {
