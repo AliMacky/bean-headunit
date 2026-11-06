@@ -136,10 +136,10 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source ~/.cargo/env
 ```
 
-Then the libraries the UI needs to draw straight to the screen and read input without a desktop. The last three are the GPU's OpenGL libraries, which Pi OS Lite doesn't include. Without them the UI still runs, but draws on the CPU, which is several times slower and uses a whole core:
+Then the libraries the UI needs to draw straight to the screen and read input without a desktop. `libegl1`, `libegl-mesa0` and `libgles2` are the GPU's OpenGL libraries, which Pi OS Lite doesn't include. Without them the UI still runs, but draws on the CPU, which is several times slower and uses a whole core. `clang` and the `libav` and `libsw` packages are for decoding CarPlay video with FFmpeg:
 
 ```
-sudo apt install -y build-essential pkg-config libudev-dev libinput-dev libxkbcommon-dev libgbm-dev libdrm-dev libfontconfig-dev libegl1 libegl-mesa0 libgles2
+sudo apt install -y build-essential pkg-config libudev-dev libinput-dev libxkbcommon-dev libgbm-dev libdrm-dev libfontconfig-dev libegl1 libegl-mesa0 libgles2 clang libavcodec-dev libavformat-dev libavutil-dev libswscale-dev libavfilter-dev libavdevice-dev libswresample-dev
 ```
 
 And the code:

@@ -1,8 +1,12 @@
 use bean_carplay::dongle::{Config, Dongle};
 use bean_carplay::protocol::msg;
-use log::{debug, info};
+use ffmpeg::codec;
+use ffmpeg::util::frame::Video as VideoFrame;
+use ffmpeg_next as ffmpeg;
+use log::{debug, info, warn};
 use std::fs::File;
 use std::io::Write;
+use std::time::{Duration, Instant};
 
 const VIDEO_PATH: &str = "/tmp/carplay.h264";
 const VIDEO_HEADER_LEN: usize = 20;
@@ -18,7 +22,17 @@ fn main() {
     let mut dongle = Dongle::connect(&config).expect("couldn't connect to dongle");
 
     let mut video_file = File::create(VIDEO_PATH).expect("couldn't create video file");
-    let mut video_count: u64 = 0;
+
+    ffmpeg::init().expect("couldn't start FFmpeg");
+    let h264 = ffmpeg::decoder::find(codec::Id::H264).expect("no H.264 decoder");
+    let mut decoder = codec::Context::new_with_codec(h264)
+        .decoder()
+        .video()
+        .expect("couldn't open decoder");
+
+    let mut frame = VideoFrame::empty();
+    let mut frames_decoded: u64 = 0;
+    let mut decode_time = Duration::ZERO;
 
     loop {
         let message = dongle.read_message().expect("couldn't read message");
@@ -41,15 +55,27 @@ fn main() {
                 info!("command {value}");
             }
             msg::VIDEO => {
-                video_file
-                    .write_all(&payload[VIDEO_HEADER_LEN..])
-                    .expect("couldn't write video");
-                video_count += 1;
-                if video_count % 100 == 1 {
-                    let width = u32::from_le_bytes(payload[0..4].try_into().unwrap());
-                    let height = u32::from_le_bytes(payload[4..8].try_into().unwrap());
-                    info!("video message {video_count}: {width}x{height}, {length} bytes");
+                let video = &payload[VIDEO_HEADER_LEN..];
+                video_file.write_all(video).expect("couldn't write video");
+
+                let packet = ffmpeg::Packet::copy(video);
+                let start = Instant::now();
+                if let Err(e) = decoder.send_packet(&packet) {
+                    warn!("decode error: {e}");
                 }
+                while decoder.receive_frame(&mut frame).is_ok() {
+                    frames_decoded += 1;
+                    if frames_decoded % 100 == 1 {
+                        info!(
+                            "frame {frames_decoded}: {}x{} {:?}, average decode {:?}",
+                            frame.width(),
+                            frame.height(),
+                            frame.format(),
+                            decode_time / frames_decoded.max(1) as u32
+                        );
+                    }
+                }
+                decode_time += start.elapsed();
             }
             msg::AUDIO | msg::HEARTBEAT | msg::MEDIA => {
                 debug!("type {msg_type:#04x}, {length} bytes")

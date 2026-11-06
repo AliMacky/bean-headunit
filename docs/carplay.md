@@ -2,7 +2,26 @@
 
 CarPlay comes from a Carlinkit CPC200-CCPA, a USB dongle with its own Wi-Fi and Bluetooth. The dongle handles the CarPlay connection with the phone. My code talks to the dongle over USB, sends it settings and touches, and gets back video, audio and status messages.
 
-So far, my Rust code can start a wireless CarPlay session with an iPhone, receive the video, and save it to a file that decodes cleanly. It doesn't show live video or handle touch yet.
+So far, my Rust code can start a wireless CarPlay session with an iPhone and show the live video in `bean-ui`. It's a desk prototype, switched on with `BEAN_CARPLAY` and run as root. There's no touch or audio yet, and no way back to the Home screen without restarting.
+
+## Trying it
+
+The dongle needs root until a udev rule gives the `bean` user access, so stop the normal UI and run it by hand. `SLINT_SCALE_FACTOR` here suits my 1080p desk display:
+
+```
+cargo build --release -p bean-ui
+sudo systemctl stop bean-ui
+sudo SLINT_BACKEND=linuxkms SLINT_SCALE_FACTOR=1.8 BEAN_CARPLAY=1 ./target/release/bean-ui
+```
+
+Video should take over the screen about 10 seconds after the phone connects. Press Ctrl-C when you're done, then run `sudo systemctl start bean-ui`.
+
+There's also a small test program that logs every message and saves the video to `/tmp/carplay.h264`:
+
+```
+cargo build --release -p bean-carplay
+sudo ./target/release/bean-carplay
+```
 
 ## How much to trust this
 
@@ -165,6 +184,12 @@ From one run with a phone that was already paired, in seconds after finding the 
 
 That's about 10 seconds to first video on this run. The first working run took about 19 seconds. Command 1009 doesn't always show up: one working session never reported it.
 
+### When a session gets stuck
+
+Once, the phone said CarPlay was connected but video never came. The log repeated this cycle about every 30 to 40 seconds: `0x02` (plugged), a long wait, `0x03`, `0x04` (unplugged), then Bluetooth connecting again. Spotify and Maps didn't offer CarPlay either, probably because no real session had started.
+
+Re-pairing didn't fix it. Turning the phone's Bluetooth and Wi-Fi off and on, making sure it wasn't connected to my car, and unplugging the dongle did. I don't know which of those mattered. The head unit will need a way to recover from this by itself, because replugging isn't an option in the car.
+
 ### Pairing a new phone
 
 1. Start the program and leave it running.
@@ -277,7 +302,7 @@ A video payload is a 20-byte header followed by the video stream:
 
 `ffprobe` reports the saved stream as H.264 High profile, `yuvj420p`, at the size requested in Open. Cutting off the first 20 bytes of each message and joining the rest gave a file `ffmpeg` decoded with no errors.
 
-The first message is small (190 to 200 bytes), and the first keyframe decoded to a black screen. Frames seem to arrive mostly when the screen changes, not at a steady rate.
+The first message is small (190 to 200 bytes), and the first keyframe decoded to a black screen. Frames seem to arrive mostly when the screen changes, not at a steady rate. In the sessions so far, each message has decoded cleanly when fed to the decoder as one packet.
 
 ### Decoding on the Pi 5
 
@@ -285,7 +310,18 @@ As far as I can find, the Pi 5 has a hardware decoder for HEVC but not H.264. So
 
 I measured with `ffmpeg -threads 1` on a 194-frame capture at 1024x560: 0.513 s, or about 378 frames per second on one core. At 30 fps, that's about 8% of one core.
 
-That capture was mostly low motion, and the number doesn't include getting frames on screen, so real use will cost more. It's still enough margin that I don't need to chase HEVC.
+That capture was mostly low motion, so it's a best case. Live decoding in the test program averaged about 4 ms per frame.
+
+With the video on screen in `bean-ui`, at 1024x560 on a 1080p display, CPU use of one core was:
+
+| Screen | CPU | Frame rate |
+| --- | --- | --- |
+| Mostly still | 1 to 4% | Very low |
+| Changing | 12 to 19% | About 7 fps |
+
+If the cost scales with frame rate, a steady 30 fps would be about 65% of one core. That's only an estimate, because I can't drive the screen hard without touch yet. It's still enough margin that I don't need to chase HEVC.
+
+FFmpeg warns `No accelerated colorspace conversion from yuv420p to rgb24`, so converting to RGB is probably a big part of that cost. If it becomes a problem, I'd try RGBA first, which may have a faster path, then sending the YUV frames to the GPU and converting them there. The `deprecated pixel format` warning is about how `yuvj420p` labels its color range, and shouldn't matter as long as colors look right.
 
 ### Getting it on screen
 
@@ -295,7 +331,23 @@ That capture was mostly low motion, and the number doesn't include getting frame
 | Separate process | `bean-carplay` decodes and shares frames with the UI | Contains crashes, but it's a lot of plumbing for a benefit I don't need yet |
 | Separate display layer | Video goes straight to a hardware plane | Cheapest per frame, but Slint currently owns the display, so it would be the hardest by far |
 
-The USB and protocol code stays in its own crate with no UI code in it, so either of the other two options stays possible without rewriting it. Slint has an official [FFmpeg example](https://github.com/slint-ui/slint/tree/master/examples/ffmpeg) using the `ffmpeg-next` crate, which is the starting point for the decoder.
+The USB and protocol code stays in its own crate with no UI code in it, so either of the other two options stays possible without rewriting it. The approach follows Slint's official [FFmpeg example](https://github.com/slint-ui/slint/tree/master/examples/ffmpeg), using the `ffmpeg-next` crate.
+
+How a frame gets to the screen:
+
+1. A thread in `bean-ui` reads messages from the dongle and skips everything but video.
+2. `VideoDecoder` (`carplay/src/video.rs`) decodes the H.264 and converts it to RGB.
+3. The thread copies the frame into a `SharedPixelBuffer`, row by row because FFmpeg can pad each row, and posts it to the UI thread. An `Image` can only be made on the UI thread, but the buffer can cross between threads.
+4. The UI thread sets `carplay-frame` and `carplay-active`, and the skin draws the image over everything else, leaving 40 px at the top for a status strip.
+
+Known limits of the prototype:
+
+- If the UI falls behind, frames queue up and the picture lags. It should keep only the newest frame.
+- The window is 1024 units wide, so on a screen with a different shape the background shows beside the video. That goes away on a 1024x600 screen at scale 1.
+
+### Building with FFmpeg
+
+On Pi OS, install FFmpeg's development libraries and `clang` (see [Pi setup](pi-setup.md#6-install-rust-and-get-this-repo)). Pi OS patches FFmpeg with extra pixel formats, so `carplay/Cargo.toml` turns on the crate's `rpi` feature for 64-bit ARM Linux only. Without it, the crate fails to compile there. On a Mac, use `brew install ffmpeg pkg-config`.
 
 ## Audio
 
@@ -323,6 +375,7 @@ Not tested yet. In the reference, a touch is type `0x05` with four little-endian
 - Can the dongle send HEVC?
 - Does the frame command do anything useful?
 - How does it cope with a real screen at a steady frame rate, and on a real drive?
+- What causes a stuck session, and how can the head unit recover without a replug?
 
 ## Credits
 

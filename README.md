@@ -17,7 +17,8 @@ Off-the-shelf stereos have bad interfaces outside of CarPlay, and their firmware
 - [ ] The other screens (Gauges, Trip, Codes, Setup), and tapping the nav bar to switch between them
 - [ ] The core: OBD2 over USB for live data and trouble codes, trip logging, warnings
 - [x] CarPlay proof of concept: my own Rust code starts a wireless session through a USB dongle and receives video that decodes cleanly ([details](docs/carplay.md))
-- [ ] CarPlay live on the screen as one view inside the UI, with touch and audio
+- [x] CarPlay video live inside the UI, as a desk prototype ([details](docs/carplay.md))
+- [ ] CarPlay finished: touch, audio, and switching to and from the other screens
 - [ ] Bluetooth hands-free calls when CarPlay isn't running
 - [ ] Physical controls in place of the ashtray: a volume knob (click to pause, double click to skip, hold for Siri), a USB-C port, and a screen-off switch
 - [ ] Car power handling: ignition sense, safe shutdown, read-only root filesystem
@@ -37,7 +38,7 @@ The core owns everything that has to keep working no matter what's on screen, so
 
 ## Try it
 
-On a laptop (macOS or Linux) with Rust installed through [rustup](https://rustup.rs):
+On a laptop (macOS or Linux) with Rust installed through [rustup](https://rustup.rs) and FFmpeg's development libraries (on a Mac, `brew install ffmpeg pkg-config`):
 
 ```
 cargo test

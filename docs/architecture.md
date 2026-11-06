@@ -19,7 +19,7 @@ Only one of `beand` and `bean-sim` runs at a time. Everything on the right side 
 | Fake core | `sim/` (`bean-sim`) | Working | Streams made-up car data, so the UI can be built without the car |
 | Dump client | `model/examples/dump.rs` | Working | Connects and prints every message, for debugging |
 | Logger | `log/` (`bean-log`) | Working | One log format for every program: time since start, level, and where the line came from |
-| CarPlay | `carplay/` (`bean-carplay`) | Started | Talks to the CarPlay dongle over USB. Live video will run inside `bean-ui` ([details](carplay.md)) |
+| CarPlay | `carplay/` (`bean-carplay`) | Started | Talks to the CarPlay dongle over USB and decodes its video. `bean-ui` runs it on its own thread when `BEAN_CARPLAY` is set ([details](carplay.md)) |
 | Core | `core/` (`beand`) | Planned | OBD, ignition and power, trip logging to SQLite, warnings, settings, later calls |
 | UI | `ui/` (`bean-ui`) | Started | Rust and [Slint](https://slint.dev). Connects to the core and shows live values from the skin it was built with |
 | Skins | `skins/cluster/` | Started | The current "90s cluster" design: tokens, night and day, the Saira font, and the Home screen so far |
@@ -70,7 +70,7 @@ The socket lives at `/tmp/bean.sock` for now (`SOCKET_PATH`). On the Pi it will 
 
 `bean-ui` opens a fixed 1024x600 window, the size of the 7" screen it's designed for. The look lives in `skins/cluster/`, which `ui/build.rs` compiles into Rust code that `main.rs` pulls in with `slint::include_modules!()`. The Rust side only talks to the skin through two globals, so it doesn't know or care how the screen is laid out.
 
-It runs on two threads:
+It runs on two threads, plus a third for CarPlay when that's switched on ([details](carplay.md#getting-it-on-screen)):
 
 - The main thread belongs to Slint's event loop, which draws the window and handles input. Slint's UI objects can only be touched from this thread, and Rust enforces that at compile time.
 - A reader thread connects to the socket and reads frames. For each `CarState` it posts a small job back to the main thread (`upgrade_in_event_loop` on a weak handle to the window), and that job sets the window's properties. Slint's bindings then redraw whatever depends on them.
@@ -90,6 +90,7 @@ Settings come from environment variables for now, read once at startup. On the P
 | --- | --- | --- |
 | `BEAN_TITLE` | `MIATA` | The name in the top bar. On the Pi it's set in the systemd service file, which stays out of the repo |
 | `BEAN_UNITS` | `f` | `f` or `imperial` for °F, `c` or `metric` for °C. Anything else logs a warning and keeps the default |
+| `BEAN_CARPLAY` | Not set | If set to anything, starts the CarPlay prototype. It needs root for now ([details](carplay.md#trying-it)) |
 
 They'll move to the Setup screen later.
 

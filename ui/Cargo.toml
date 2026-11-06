@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+bean-carplay = { version = "0.1.0", path = "../carplay" }
 bean-log = { version = "0.1.0", path = "../log" }
 bean-model = { version = "0.1.0", path = "../model" }
 log = "0.4.34"

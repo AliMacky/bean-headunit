@@ -23,6 +23,14 @@ UNITS=/etc/systemd/system
 WITH_SIM=no
 if [ "${1:-}" = "--sim" ]; then WITH_SIM=yes; fi
 
+echo "Installing system packages..."
+sudo apt install -y \
+    build-essential pkg-config clang \
+    libudev-dev libinput-dev libxkbcommon-dev libgbm-dev libdrm-dev libfontconfig-dev \
+    libegl1 libegl-mesa0 libgles2 \
+    libavcodec-dev libavformat-dev libavutil-dev libswscale-dev \
+    libavfilter-dev libavdevice-dev libswresample-dev
+
 echo "Building..."
 cargo build --release -p bean-ui -p bean-sim --manifest-path "$REPO/Cargo.toml"
 

@@ -18,6 +18,9 @@ export component MainWindow inherits Window {
     title: "bean-ui";
     background: Tokens.bg;
 
+    in property <image> carplay-frame;
+    in property <bool> carplay-active: false;
+
     VerticalLayout {
         padding-left: Tokens.pad-side;
         padding-right: Tokens.pad-side;
@@ -37,6 +40,19 @@ export component MainWindow inherits Window {
         //navbar
         NavBar {
             active: 0;
+        }
+    }
+
+    if carplay-active: Rectangle {
+        background: black;
+        
+        Image {
+            x: 0;
+            y: 40px;
+            width: parent.width;
+            height: parent.height - 40px;
+            source: carplay-frame;
+            image-fit: fill;
         }
     }
 }

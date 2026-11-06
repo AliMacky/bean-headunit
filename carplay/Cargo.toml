@@ -7,3 +7,9 @@ edition = "2024"
 bean-log = { version = "0.1.0", path = "../log" }
 nusb = "0.2.9"
 log = "0.4.34"
+ffmpeg-next = "9.0.0"
+
+# Pi OS patches FFmpeg with extra pixel formats, which the crate only handles
+# with this feature. Other platforms use a plain FFmpeg and would fail with it.
+[target.'cfg(all(target_os = "linux", target_arch = "aarch64"))'.dependencies]
+ffmpeg-next = { version = "9.0.0", features = ["rpi"] }

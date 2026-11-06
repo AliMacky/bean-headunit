@@ -1,4 +1,8 @@
+use bean_carplay::dongle::{Config, Dongle};
+use bean_carplay::protocol::msg;
+use bean_carplay::video::{RgbFrame, VideoDecoder};
 use log::{info, warn};
+use slint::{Image, Rgb8Pixel, SharedPixelBuffer};
 use std::io;
 use std::os::unix::net::UnixStream;
 use std::thread;
@@ -43,6 +47,61 @@ fn set_disconnected(window: &MainWindow) {
     car.set_rpm_known(false);
 }
 
+fn to_pixel_buffer(frame: &RgbFrame) -> SharedPixelBuffer<Rgb8Pixel> {
+    let mut buffer = SharedPixelBuffer::<Rgb8Pixel>::new(frame.width, frame.height);
+    let row_len = frame.width as usize * 3;
+
+    let source_rows = frame.data.chunks_exact(frame.stride);
+    let dest_rows = buffer.make_mut_bytes().chunks_exact_mut(row_len);
+    for (source, dest) in source_rows.zip(dest_rows) {
+        dest.copy_from_slice(&source[..row_len]);
+    }
+
+    buffer
+}
+
+fn run_carplay(window: slint::Weak<MainWindow>) -> Result<(), String> {
+    let config = Config {
+        width: 1024,
+        height: 560,
+        fps: 30,
+    };
+    let mut dongle = Dongle::connect(&config).map_err(|e| e.to_string())?;
+    let mut decoder = VideoDecoder::new().map_err(|e| e.to_string())?;
+
+    info!("CarPlay connected");
+    let mut frames: u64 = 0;
+
+    loop {
+        let message = dongle.read_message().map_err(|e| e.to_string())?;
+        if message.msg_type != msg::VIDEO {
+            continue;
+        }
+
+        let result = decoder.decode(&message.payload, |frame| {
+            frames += 1;
+            if frames % 100 == 1 {
+                info!(
+                    "decoded frame {frames}: {}x{}, stride {}",
+                    frame.width, frame.height, frame.stride
+                );
+            }
+
+            let buffer = to_pixel_buffer(&frame);
+            let sent = window.upgrade_in_event_loop(move |w| {
+                w.set_carplay_frame(Image::from_rgb8(buffer));
+                w.set_carplay_active(true);
+            });
+            if let Err(e) = sent {
+                warn!("couldn't send frame to the UI: {e}");
+            }
+        });
+        if let Err(e) = result {
+            warn!("decode error: {e}");
+        }
+    }
+}
+
 fn tell_systemd_ready() {
     if let Err(e) = sd_notify::notify(&[sd_notify::NotifyState::Ready]) {
         warn!("couldn't tell systemd we're ready: {e}");
@@ -76,6 +135,18 @@ fn main() -> Result<(), slint::PlatformError> {
             "c" | "metric" => window.global::<Settings>().set_fahrenheit(false),
             other => warn!("unknown BEAN_UNITS {other:?}, keeping the default"),
         }
+    }
+
+    if std::env::var_os("BEAN_CARPLAY").is_some() {
+        let weak = window.as_weak();
+        thread::spawn(move || {
+            loop {
+                if let Err(e) = run_carplay(weak.clone()) {
+                    warn!("CarPlay stopped: {e}");
+                }
+                thread::sleep(Duration::from_secs(1));
+            }
+        });
     }
 
     let weak = window.as_weak();
