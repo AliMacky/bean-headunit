@@ -1,0 +1,9 @@
+[package]
+name = "bean-carplay"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bean-log = { version = "0.1.0", path = "../log" }
+nusb = "0.2.9"
+log = "0.4.34"

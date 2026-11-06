@@ -56,11 +56,10 @@ So about 2.7 s of system boot, 8.7 s of intro, and 1.4 s for the UI to start col
 - A custom kernel boot logo. There's no framebuffer early enough for it to show up, so it saved nothing.
 - Shipping frame 0 pre-rendered so something appears instantly. The animation file already loads in about 0.1 s, so there was nothing to gain.
 - Redirecting `fsck` output to hide the boot-screen lines. They turned out to come from the initramfs, so skipping the initramfs fixed it instead.
+- Stripping debug info from the release build (`strip = true` in `[profile.release]`). It made no measurable difference to a cold start: first frame at 1.23 s against 1.32 s, which is within noise. So it was undone.
 
 ## Ideas for later
 
 - The intro is most of the time to the UI. A shorter animation, or only playing the full one now and then, would get the UI up several seconds sooner.
-- Stripping debug info from the release build (`strip = true` in `[profile.release]`). The UI binary is about 30 MB, mostly debug info, and all of it is read from the SD card on a cold start.
-
 - The splash still waits for the boot partition's filesystem check, which takes about 0.65 s.
 - `DISABLE_HDMI=1` in the bootloader EEPROM config, which skips the bootloader's own HDMI output.

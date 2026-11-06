@@ -16,7 +16,8 @@ Off-the-shelf stereos have bad interfaces outside of CarPlay, and their firmware
 - [x] Runs on the Pi without a desktop: the UI takes over from the splash at boot, as its own locked-down user, installed with one script ([details](docs/pi-setup.md#7-install-the-head-unit))
 - [ ] The other screens (Gauges, Trip, Codes, Setup), and tapping the nav bar to switch between them
 - [ ] The core: OBD2 over USB for live data and trouble codes, trip logging, warnings
-- [ ] CarPlay through a USB dongle, as one view inside the UI
+- [x] CarPlay proof of concept: my own Rust code starts a wireless session through a USB dongle and receives video that decodes cleanly ([details](docs/carplay.md))
+- [ ] CarPlay live on the screen as one view inside the UI, with touch and audio
 - [ ] Bluetooth hands-free calls when CarPlay isn't running
 - [ ] Physical controls in place of the ashtray: a volume knob (click to pause, double click to skip, hold for Siri), a USB-C port, and a screen-off switch
 - [ ] Car power handling: ignition sense, safe shutdown, read-only root filesystem
@@ -59,6 +60,7 @@ bean-headunit/
   ui/               bean-ui: the Slint window that shows the car state
   skins/            the UI's look, one folder per skin (cluster/ is the current one)
   log/              bean-log: the shared logger every program uses
+  carplay/          bean-carplay: talks to the CarPlay dongle over USB
   splash/           the boot animation (Python) and its systemd service
   system/           install script, systemd services, and the example config
   docs/             setup guide, architecture, boot time, splash
@@ -71,3 +73,4 @@ bean-headunit/
 - [Architecture](docs/architecture.md): the core and UI split, the contract, and the wire format
 - [Boot time](docs/boot-time.md): measurements, what helped, and what didn't
 - [Boot splash](docs/splash.md): how it works, rebuilding it, and its settings
+- [CarPlay](docs/carplay.md): the dongle, its USB protocol, and everything learned about it so far

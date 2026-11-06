@@ -19,7 +19,8 @@ Only one of `beand` and `bean-sim` runs at a time. Everything on the right side 
 | Fake core | `sim/` (`bean-sim`) | Working | Streams made-up car data, so the UI can be built without the car |
 | Dump client | `model/examples/dump.rs` | Working | Connects and prints every message, for debugging |
 | Logger | `log/` (`bean-log`) | Working | One log format for every program: time since start, level, and where the line came from |
-| Core | `core/` (`beand`) | Planned | OBD, ignition and power, trip logging to SQLite, warnings, settings, later calls and the CarPlay host |
+| CarPlay | `carplay/` (`bean-carplay`) | Started | Talks to the CarPlay dongle over USB. Live video will run inside `bean-ui` ([details](carplay.md)) |
+| Core | `core/` (`beand`) | Planned | OBD, ignition and power, trip logging to SQLite, warnings, settings, later calls |
 | UI | `ui/` (`bean-ui`) | Started | Rust and [Slint](https://slint.dev). Connects to the core and shows live values from the skin it was built with |
 | Skins | `skins/cluster/` | Started | The current "90s cluster" design: tokens, night and day, the Saira font, and the Home screen so far |
 | Web dashboard | `web/` | Later | Trip history and diagnostics from another device |
