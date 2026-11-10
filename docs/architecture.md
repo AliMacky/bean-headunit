@@ -70,7 +70,7 @@ The socket lives at `/tmp/bean.sock` for now (`SOCKET_PATH`). On the Pi it will 
 
 `bean-ui` opens a fixed 1024x600 window, the size of the 7" screen it's designed for. The look lives in `skins/cluster/`, which `ui/build.rs` compiles into Rust code that `main.rs` pulls in with `slint::include_modules!()`. The Rust side only talks to the skin through two globals, so it doesn't know or care how the screen is laid out.
 
-It runs on two threads, plus a third for CarPlay when that's switched on ([details](carplay.md#getting-it-on-screen)):
+It runs on two threads, plus two more for CarPlay when that's switched on, one reading and decoding and one writing to the dongle ([details](carplay.md#getting-it-on-screen)):
 
 - The main thread belongs to Slint's event loop, which draws the window and handles input. Slint's UI objects can only be touched from this thread, and Rust enforces that at compile time.
 - A reader thread connects to the socket and reads frames. For each `CarState` it posts a small job back to the main thread (`upgrade_in_event_loop` on a weak handle to the window), and that job sets the window's properties. Slint's bindings then redraw whatever depends on them.

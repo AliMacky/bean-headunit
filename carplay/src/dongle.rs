@@ -4,8 +4,9 @@ use nusb::MaybeFuture;
 use nusb::io::EndpointRead;
 use nusb::transfer::{Bulk, In, Out};
 use std::io::{self, Write};
+use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
 use std::thread;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 const VENDOR_ID: u16 = 0x1314;
 const PRODUCT_IDS: [u16; 2] = [0x1520, 0x1521];
@@ -13,14 +14,19 @@ const PRODUCT_IDS: [u16; 2] = [0x1520, 0x1521];
 const ENDPOINT_OUT: u8 = 0x01;
 const ENDPOINT_IN: u8 = 0x81;
 
+const HEARTBEAT_EVERY: Duration = Duration::from_secs(2);
+
+pub type Outgoing = (u32, Vec<u8>);
+
+pub struct Dongle {
+    reader: EndpointRead<Bulk>,
+    sender: Sender<Outgoing>,
+}
+
 pub struct Config {
     pub width: u32,
     pub height: u32,
     pub fps: u32,
-}
-
-pub struct Dongle {
-    reader: EndpointRead<Bulk>,
 }
 
 impl Dongle {
@@ -40,13 +46,18 @@ impl Dongle {
 
         start_session(&mut writer, config)?;
 
+        let (sender, receiver) = mpsc::channel();
         thread::spawn(move || {
-            if let Err(e) = heartbeat(&mut writer) {
-                error!("heartbeat stopped: {e}");
+            if let Err(e) = writer_loop(&mut writer, receiver) {
+                error!("writer stopped: {e}");
             }
         });
 
-        Ok(Dongle { reader })
+        Ok(Dongle { reader, sender })
+    }
+
+    pub fn sender(&self) -> Sender<Outgoing> {
+        self.sender.clone()
     }
 
     pub fn read_message(&mut self) -> io::Result<Message> {
@@ -103,17 +114,28 @@ fn start_session(writer: &mut impl Write, config: &Config) -> io::Result<()> {
     Ok(())
 }
 
-fn heartbeat(writer: &mut impl Write) -> io::Result<()> {
+fn writer_loop(writer: &mut impl Write, receiver: Receiver<Outgoing>) -> io::Result<()> {
     thread::sleep(Duration::from_secs(1));
     send_command(writer, cmd::WIFI_CONNECT)?;
 
     let mut tick: u32 = 0;
+    let mut next_beat = Instant::now();
     loop {
-        send(writer, msg::HEARTBEAT, &[])?;
-        if tick.is_multiple_of(3) {
-            send_command(writer, cmd::FRAME)?;
+        let wait = next_beat.saturating_duration_since(Instant::now());
+        match receiver.recv_timeout(wait) {
+            Ok((msg_type, payload)) => send(writer, msg_type, &payload)?,
+            Err(RecvTimeoutError::Timeout) => {
+                send(writer, msg::HEARTBEAT, &[])?;
+                if tick.is_multiple_of(3) {
+                    send_command(writer, cmd::FRAME)?;
+                }
+                tick = tick.wrapping_add(1);
+                next_beat += HEARTBEAT_EVERY;
+            }
+            Err(RecvTimeoutError::Disconnected) => {
+                info!("dongle dropped, writer stopping");
+                return Ok(());
+            }
         }
-        tick = tick.wrapping_add(1);
-        thread::sleep(Duration::from_secs(2));
     }
 }

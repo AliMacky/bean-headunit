@@ -1,16 +1,20 @@
-use bean_carplay::dongle::{Config, Dongle};
-use bean_carplay::protocol::msg;
+use bean_carplay::dongle::{Config, Dongle, Outgoing};
+use bean_carplay::protocol::{TouchAction, msg, touch_payload};
 use bean_carplay::video::{RgbFrame, VideoDecoder};
 use log::{info, warn};
 use slint::{Image, Rgb8Pixel, SharedPixelBuffer};
 use std::io;
 use std::os::unix::net::UnixStream;
+use std::sync::mpsc::Sender;
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
 use bean_model::{CarState, SOCKET_PATH, Theme, read_frame};
 
 slint::include_modules!();
+
+type TouchSlot = Arc<Mutex<Option<Sender<Outgoing>>>>;
 
 fn apply(window: &MainWindow, state: &CarState) {
     let car = window.global::<Car>();
@@ -60,7 +64,20 @@ fn to_pixel_buffer(frame: &RgbFrame) -> SharedPixelBuffer<Rgb8Pixel> {
     buffer
 }
 
-fn run_carplay(window: slint::Weak<MainWindow>) -> Result<(), String> {
+fn send_touch(slot: &TouchSlot, kind: TouchKind, x: f32, y: f32) {
+    let action = match kind {
+        TouchKind::Down => TouchAction::Down,
+        TouchKind::Move => TouchAction::Move,
+        TouchKind::Up => TouchAction::Up,
+    };
+
+    let guard = slot.lock().expect("touch slot lock poisoned");
+    if let Some(sender) = guard.as_ref() {
+        let _ = sender.send((msg::TOUCH, touch_payload(action, x, y)));
+    }
+}
+
+fn run_carplay(window: slint::Weak<MainWindow>, slot: &TouchSlot) -> Result<(), String> {
     let config = Config {
         width: 1024,
         height: 560,
@@ -68,6 +85,7 @@ fn run_carplay(window: slint::Weak<MainWindow>) -> Result<(), String> {
     };
     let mut dongle = Dongle::connect(&config).map_err(|e| e.to_string())?;
     let mut decoder = VideoDecoder::new().map_err(|e| e.to_string())?;
+    *slot.lock().expect("touch slot lock poisoned") = Some(dongle.sender());
 
     info!("CarPlay connected");
     let mut frames: u64 = 0;
@@ -138,12 +156,18 @@ fn main() -> Result<(), slint::PlatformError> {
     }
 
     if std::env::var_os("BEAN_CARPLAY").is_some() {
+        let slot: TouchSlot = Arc::new(Mutex::new(None));
+
+        let ui_slot = Arc::clone(&slot);
+        window.on_carplay_touch(move |kind, x, y| send_touch(&ui_slot, kind, x, y));
+
         let weak = window.as_weak();
         thread::spawn(move || {
             loop {
-                if let Err(e) = run_carplay(weak.clone()) {
+                if let Err(e) = run_carplay(weak.clone(), &slot) {
                     warn!("CarPlay stopped: {e}");
                 }
+                *slot.lock().expect("touch slot lock poisoned") = None;
                 thread::sleep(Duration::from_secs(1));
             }
         });

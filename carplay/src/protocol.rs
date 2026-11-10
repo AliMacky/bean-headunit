@@ -7,6 +7,7 @@ pub mod msg {
     pub const OPEN: u32 = 0x01;
     pub const PLUGGED: u32 = 0x02;
     pub const PHASE: u32 = 0x03;
+    pub const TOUCH: u32 = 0x05;
     pub const VIDEO: u32 = 0x06;
     pub const AUDIO: u32 = 0x07;
     pub const COMMAND: u32 = 0x08;
@@ -15,9 +16,7 @@ pub mod msg {
     pub const PAIRED_LIST: u32 = 0x12;
     pub const HICAR_LINK: u32 = 0x18;
     pub const BOX_SETTINGS: u32 = 0x19;
-    /// Guess: the phone's Bluetooth address, when a connection starts.
     pub const PHONE_CONNECTING: u32 = 0x23;
-    /// Guess: the phone's Bluetooth address, once Bluetooth has connected.
     pub const PHONE_CONNECTED: u32 = 0x24;
     pub const UNKNOWN_25: u32 = 0x25;
     pub const UNKNOWN_26: u32 = 0x26;
@@ -70,6 +69,25 @@ pub fn send_file(writer: &mut impl Write, path: &str, content: &[u8]) -> io::Res
 
 pub fn send_number(writer: &mut impl Write, path: &str, value: u32) -> io::Result<()> {
     send_file(writer, path, &value.to_le_bytes())
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum TouchAction {
+    Down = 14,
+    Move = 15,
+    Up = 16,
+}
+
+/// 0.0 (left or top) to 1.0 (right or bottom).
+pub fn touch_payload(action: TouchAction, x: f32, y: f32) -> Vec<u8> {
+    let scale = |v: f32| (v.clamp(0.0, 1.0) * 10000.0).round() as u32;
+    let fields: [u32; 4] = [action as u32, scale(x), scale(y), 0];
+
+    let mut payload = Vec::new();
+    for field in fields {
+        payload.extend_from_slice(&field.to_le_bytes());
+    }
+    payload
 }
 
 pub fn read_message(reader: &mut impl Read) -> io::Result<Message> {
@@ -125,5 +143,16 @@ mod tests {
         bytes[12] = 0x00;
 
         assert!(read_message(&mut bytes.as_slice()).is_err());
+    }
+
+    #[test]
+    fn touch_payload_scales_and_clamps() {
+        let payload = touch_payload(TouchAction::Move, 0.5, 1.7);
+
+        assert_eq!(payload.len(), 16);
+        assert_eq!(payload[0..4], 15u32.to_le_bytes());
+        assert_eq!(payload[4..8], 5000u32.to_le_bytes());
+        assert_eq!(payload[8..12], 10000u32.to_le_bytes());
+        assert_eq!(payload[12..16], 0u32.to_le_bytes());
     }
 }

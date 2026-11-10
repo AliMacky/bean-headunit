@@ -11,6 +11,8 @@ import { NavBar } from "nav_bar.slint";
 import { Tile, TileState } from "tile.slint";
 import { Home } from "home.slint";
 
+export enum TouchKind { down, move, up }
+
 export component MainWindow inherits Window {
     default-font-family: "Saira SemiCondensed";
     width: 1024px;
@@ -20,6 +22,7 @@ export component MainWindow inherits Window {
 
     in property <image> carplay-frame;
     in property <bool> carplay-active: false;
+    callback carplay-touch(TouchKind, float, float);
 
     VerticalLayout {
         padding-left: Tokens.pad-side;
@@ -53,6 +56,21 @@ export component MainWindow inherits Window {
             height: parent.height - 40px;
             source: carplay-frame;
             image-fit: fill;
+
+            TouchArea {
+                pointer-event(event) => {
+                    if event.kind == PointerEventKind.down && event.button == PointerEventButton.left {
+                        root.carplay-touch(TouchKind.down, self.mouse-x / self.width, self.mouse-y / self.height);
+                    } else if event.kind == PointerEventKind.up && event.button == PointerEventButton.left {
+                        root.carplay-touch(TouchKind.up, self.mouse-x / self.width, self.mouse-y / self.height);
+                    } else if event.kind == PointerEventKind.cancel {
+                        root.carplay-touch(TouchKind.up, self.mouse-x / self.width, self.mouse-y / self.height);
+                    }
+                }
+                moved => {
+                    root.carplay-touch(TouchKind.move, self.mouse-x / self.width, self.mouse-y / self.height);
+                }
+            }
         }
     }
 }

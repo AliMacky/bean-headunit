@@ -18,7 +18,8 @@ Off-the-shelf stereos have bad interfaces outside of CarPlay, and their firmware
 - [ ] The core: OBD2 over USB for live data and trouble codes, trip logging, warnings
 - [x] CarPlay proof of concept: my own Rust code starts a wireless session through a USB dongle and receives video that decodes cleanly ([details](docs/carplay.md))
 - [x] CarPlay video live inside the UI, as a desk prototype ([details](docs/carplay.md))
-- [ ] CarPlay finished: touch, audio, and switching to and from the other screens
+- [x] CarPlay touch: taps, drags and swipes, with a touchscreen or a mouse ([details](docs/carplay.md#touch))
+- [ ] CarPlay finished: audio, and switching to and from the other screens
 - [ ] Bluetooth hands-free calls when CarPlay isn't running
 - [ ] Physical controls in place of the ashtray: a volume knob (click to pause, double click to skip, hold for Siri), a USB-C port, and a screen-off switch
 - [ ] Car power handling: ignition sense, safe shutdown, read-only root filesystem

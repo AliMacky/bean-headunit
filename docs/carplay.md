@@ -2,7 +2,7 @@
 
 CarPlay comes from a Carlinkit CPC200-CCPA, a USB dongle with its own Wi-Fi and Bluetooth. The dongle handles the CarPlay connection with the phone. My code talks to the dongle over USB, sends it settings and touches, and gets back video, audio and status messages.
 
-So far, my Rust code can start a wireless CarPlay session with an iPhone and show the live video in `bean-ui`. It's a desk prototype, switched on with `BEAN_CARPLAY` and run as root. There's no touch or audio yet, and no way back to the Home screen without restarting.
+So far, my Rust code can start a wireless CarPlay session with an iPhone and show the live video in `bean-ui`. It's a desk prototype, switched on with `BEAN_CARPLAY` and run as root. Touch works, so you can use CarPlay with a touchscreen or a mouse. There's no audio yet, and no way back to the Home screen without restarting.
 
 ## Trying it
 
@@ -14,7 +14,7 @@ sudo systemctl stop bean-ui
 sudo SLINT_BACKEND=linuxkms SLINT_SCALE_FACTOR=1.8 BEAN_CARPLAY=1 ./target/release/bean-ui
 ```
 
-Video should take over the screen about 10 seconds after the phone connects. Press Ctrl-C when you're done, then run `sudo systemctl start bean-ui`.
+Video should take over the screen about 10 seconds after the phone connects. A mouse works for touch at a desk, and Slint draws a cursor. Press Ctrl-C when you're done, then run `sudo systemctl start bean-ui`.
 
 There's also a small test program that logs every message and saves the video to `/tmp/carplay.h264`:
 
@@ -104,7 +104,7 @@ This is the sequence that works, in order. It follows node-CarPlay, leaving out 
 | After that | `0xAA` heartbeat | Empty, every 2 seconds |
 | After that | `0x08` command | 12, ask for a frame, about every 6 seconds |
 
-node-CarPlay's code says the frame command is for CarPlay, and it sends it every 5 seconds. My guess is that it asks for a new keyframe, and I picked 6 seconds only because it fits my heartbeat loop.
+node-CarPlay's code says the frame command is for CarPlay, and it sends it every 5 seconds. My guess is that it asks for a new keyframe, and I picked 6 seconds only because it fits my 2-second heartbeat.
 
 Before I added steps 1, 3 to 6, 9 and 10, Bluetooth connected but the session never got further. I also disconnected the phone from my car around the same time, so I don't know which change fixed it, or if only some of those messages are needed.
 
@@ -207,7 +207,7 @@ After that, the dongle lists the phone in `DevList` and connects by itself. The 
 | `0x02` | Plugged | From dongle | 8 bytes: phone type, then Wi-Fi flag | Seen, fields are Reference |
 | `0x03` | Phase | From dongle | 4 bytes, meaning unknown | Seen |
 | `0x04` | Unplugged | From dongle | None | Reference |
-| `0x05` | Touch | To dongle | See [touch](#touch) | Reference |
+| `0x05` | Touch | To dongle | See [touch](#touch) | Seen working |
 | `0x06` | Video | From dongle | See [video](#video) | Seen |
 | `0x07` | Audio | Both | See [audio](#audio) | Reference |
 | `0x08` | Command | Both | 4-byte command | Seen |
@@ -318,8 +318,9 @@ With the video on screen in `bean-ui`, at 1024x560 on a 1080p display, CPU use o
 | --- | --- | --- |
 | Mostly still | 1 to 4% | Very low |
 | Changing | 12 to 19% | About 7 fps |
+| Swiping between pages | 20 to 50% | About 17 to 22 fps |
 
-If the cost scales with frame rate, a steady 30 fps would be about 65% of one core. That's only an estimate, because I can't drive the screen hard without touch yet. It's still enough margin that I don't need to chase HEVC.
+That fits a steady 30 fps costing roughly 65% of one core, which I still haven't measured directly, since the phone only sends frames while the screen moves. It's enough margin that I don't need to chase HEVC.
 
 FFmpeg warns `No accelerated colorspace conversion from yuv420p to rgb24`, so converting to RGB is probably a big part of that cost. If it becomes a problem, I'd try RGBA first, which may have a faster path, then sending the YUV frames to the GPU and converting them there. The `deprecated pixel format` warning is about how `yuvj420p` labels its color range, and shouldn't matter as long as colors look right.
 
@@ -357,7 +358,7 @@ The same layout goes the other way for the microphone.
 
 ## Touch
 
-Not tested yet. In the reference, a touch is type `0x05` with four little-endian `u32`s:
+Taps, drags and swipes all work. A touch is type `0x05` with four little-endian `u32`s, as in the reference:
 
 | Field | Value |
 | --- | --- |
@@ -365,6 +366,23 @@ Not tested yet. In the reference, a touch is type `0x05` with four little-endian
 | X | 0 to 10000, as a fraction of the width |
 | Y | 0 to 10000, as a fraction of the height |
 | Flags | 0 |
+
+Only single touches so far. Multi-touch (`0x17`) isn't tried.
+
+### How a touch gets to the dongle
+
+1. A `TouchArea` over the CarPlay image in the skin turns presses, drags and releases into a `carplay-touch` callback, with x and y as fractions of the image (0 to 1). A cancelled press is sent as a release, so CarPlay never ends up with a finger stuck down. A drag that leaves the image keeps going until the button or finger lets go, the same as on a real screen.
+2. `bean-ui` turns that into a payload with `touch_payload` (`carplay/src/protocol.rs`), which clamps x and y and scales them to 0 to 10000.
+3. It puts the message on the current session's queue, an `mpsc` channel. The UI thread never waits on USB.
+4. One writer thread per session owns the USB out endpoint (`writer_loop` in `carplay/src/dongle.rs`). It sends whatever is queued and keeps the heartbeat on a 2-second schedule in between, using a deadline so a stream of touches can't delay it. Only one thread ever writes, so messages can't interleave on the wire.
+
+Between sessions the UI holds no sender. When a session ends, every sender is dropped and the writer thread stops on its own.
+
+### Latency
+
+On a still screen, the next video frame arrived about 120 to 200 ms after a touch. That covers USB, the dongle, Wi-Fi, the phone redrawing, and the frame coming back. That's normal for wireless CarPlay.
+
+At my desk it felt like 1 to 2 seconds, but the mouse cursor in the Home screen lagged just as much, and that never leaves the Pi. So the rest comes from my desk display, which goes through a capture card to an iPad, not from the head unit.
 
 ## Open questions
 
@@ -374,7 +392,7 @@ Not tested yet. In the reference, a touch is type `0x05` with four little-endian
 - What do `format`, `iBoxVersion` and `phoneWorkMode` in Open do?
 - Can the dongle send HEVC?
 - Does the frame command do anything useful?
-- How does it cope with a real screen at a steady frame rate, and on a real drive?
+- How does it cope with a real screen at a steady frame rate, and on a real drive? How much latency is left once the capture card is gone?
 - What causes a stuck session, and how can the head unit recover without a replug?
 
 ## Credits
