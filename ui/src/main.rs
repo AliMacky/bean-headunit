@@ -5,6 +5,7 @@ use log::{info, warn};
 use slint::{Image, Rgb8Pixel, SharedPixelBuffer};
 use std::io;
 use std::os::unix::net::UnixStream;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -15,6 +16,30 @@ use bean_model::{CarState, SOCKET_PATH, Theme, read_frame};
 slint::include_modules!();
 
 type TouchSlot = Arc<Mutex<Option<Sender<Outgoing>>>>;
+
+struct Latest<T> {
+    value: Mutex<Option<T>>,
+    wake_pending: AtomicBool,
+}
+
+impl<T> Latest<T> {
+    fn new() -> Self {
+        Latest {
+            value: Mutex::new(None),
+            wake_pending: AtomicBool::new(false),
+        }
+    }
+
+    fn put(&self, value: T) -> bool {
+        *self.value.lock().expect("latest lock poisoned") = Some(value);
+        !self.wake_pending.swap(true, Ordering::AcqRel)
+    }
+
+    fn take(&self) -> Option<T> {
+        self.wake_pending.store(false, Ordering::Release);
+        self.value.lock().expect("latest lock poisoned").take()
+    }
+}
 
 fn apply(window: &MainWindow, state: &CarState) {
     let car = window.global::<Car>();
@@ -89,6 +114,7 @@ fn run_carplay(window: slint::Weak<MainWindow>, slot: &TouchSlot) -> Result<(), 
 
     info!("CarPlay connected");
     let mut frames: u64 = 0;
+    let latest: Arc<Latest<SharedPixelBuffer<Rgb8Pixel>>> = Arc::new(Latest::new());
 
     loop {
         let message = dongle.read_message().map_err(|e| e.to_string())?;
@@ -106,12 +132,17 @@ fn run_carplay(window: slint::Weak<MainWindow>, slot: &TouchSlot) -> Result<(), 
             }
 
             let buffer = to_pixel_buffer(&frame);
-            let sent = window.upgrade_in_event_loop(move |w| {
-                w.set_carplay_frame(Image::from_rgb8(buffer));
-                w.set_carplay_active(true);
-            });
-            if let Err(e) = sent {
-                warn!("couldn't send frame to the UI: {e}");
+            if latest.put(buffer) {
+                let latest = Arc::clone(&latest);
+                let sent = window.upgrade_in_event_loop(move |w| {
+                    if let Some(buffer) = latest.take() {
+                        w.set_carplay_frame(Image::from_rgb8(buffer));
+                        w.set_carplay_active(true);
+                    }
+                });
+                if let Err(e) = sent {
+                    warn!("couldn't send frame to the UI: {e}");
+                }
             }
         });
         if let Err(e) = result {
