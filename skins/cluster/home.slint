@@ -12,17 +12,14 @@ component SmallTile inherits Tile {
 }
 
 export component Home inherits Rectangle {
-    property <length> left-w: (root.width - Tokens.gap-region) * 0.65;
-    property <length> right-w: root.width - Tokens.gap-region - self.left-w;
-    property <length> small-w: (root.right-w - Tokens.gap-tile) / 2;
-
     property <int> water-shown: Settings.fahrenheit ? round(Car.water-c * 1.8 + 32) : Car.water-c;
 
     HorizontalLayout {
         spacing: Tokens.gap-region;
 
         Tile {
-            width: root.left-w;
+            preferred-width: 0;
+            horizontal-stretch: 65;
             label: "WATER TEMP";
             value: Car.water-known ? "\{water-shown}" : "—";
             value-size: Tokens.fs-hero;
@@ -32,7 +29,8 @@ export component Home inherits Rectangle {
         }
 
         VerticalLayout {
-            width: root.right-w;
+            preferred-width: 0;
+            horizontal-stretch: 35;
             spacing: Tokens.gap-tile;
 
             HorizontalLayout {
@@ -40,12 +38,14 @@ export component Home inherits Rectangle {
                 SmallTile {
                     label: "VOLTS";
                     value: Car.volts-known ? Car.volts.to-fixed(1) : "—";
-                    width: root.small-w;
+                    preferred-width: 0;
+                    horizontal-stretch: 1;
                 }
 
                 SmallTile {
                     label: "INTAKE";
-                    width: root.small-w;
+                    preferred-width: 0;
+                    horizontal-stretch: 1;
                 }
             }
 
@@ -53,12 +53,14 @@ export component Home inherits Rectangle {
                 spacing: Tokens.gap-tile;
                 SmallTile {
                     label: "FUEL LEFT";
-                    width: root.small-w;
+                    preferred-width: 0;
+                    horizontal-stretch: 1;
                 }
 
                 SmallTile {
                     label: "CODES";
-                    width: root.small-w;
+                    preferred-width: 0;
+                    horizontal-stretch: 1;
                 }
             }
 
