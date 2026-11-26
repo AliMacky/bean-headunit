@@ -6,7 +6,7 @@ use slint::{Image, Rgb8Pixel, SharedPixelBuffer};
 use std::io;
 use std::os::unix::net::UnixStream;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::Sender;
+use std::sync::mpsc::{self, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
@@ -102,10 +102,32 @@ fn send_touch(slot: &TouchSlot, kind: TouchKind, x: f32, y: f32) {
     }
 }
 
+fn carplay_size(window: &slint::Weak<MainWindow>) -> Option<(u32, u32)> {
+    let (tx, rx) = mpsc::sync_channel(1);
+    window
+        .upgrade_in_event_loop(move |w| {
+            let scale = w.window().scale_factor();
+            let width = (w.get_carplay_width() * scale) as u32;
+            let height = (w.get_carplay_height() * scale) as u32;
+            let _ = tx.send((width & !1, height & !1));
+        })
+        .ok()?;
+    let (width, height) = rx.recv().ok()?;
+    if width == 0 || height == 0 {
+        return None;
+    }
+    Some((width, height))
+}
+
 fn run_carplay(window: slint::Weak<MainWindow>, slot: &TouchSlot) -> Result<(), String> {
+    let (width, height) = carplay_size(&window).unwrap_or_else(|| {
+        warn!("couldn't get the CarPlay area size, using 1280x750");
+        (1280, 750)
+    });
+    info!("asking for CarPlay video at {width}x{height}");
     let config = Config {
-        width: 1280,
-        height: 750,
+        width,
+        height,
         fps: 30,
     };
     let mut dongle = Dongle::connect(&config).map_err(|e| e.to_string())?;
@@ -131,13 +153,22 @@ fn run_carplay(window: slint::Weak<MainWindow>, slot: &TouchSlot) -> Result<(), 
                 );
             }
 
+            if frames == 1 {
+                let sent = window.upgrade_in_event_loop(|w| {
+                    w.set_carplay_connected(true);
+                    w.set_carplay_shown(true);
+                });
+                if let Err(e) = sent {
+                    warn!("couldn't show CarPlay: {e}");
+                }
+            }
+
             let buffer = to_pixel_buffer(&frame);
             if latest.put(buffer) {
                 let latest = Arc::clone(&latest);
                 let sent = window.upgrade_in_event_loop(move |w| {
                     if let Some(buffer) = latest.take() {
                         w.set_carplay_frame(Image::from_rgb8(buffer));
-                        w.set_carplay_active(true);
                     }
                 });
                 if let Err(e) = sent {
@@ -199,6 +230,7 @@ fn main() -> Result<(), slint::PlatformError> {
                     warn!("CarPlay stopped: {e}");
                 }
                 *slot.lock().expect("touch slot lock poisoned") = None;
+                let _ = weak.upgrade_in_event_loop(|w| w.set_carplay_connected(false));
                 thread::sleep(Duration::from_secs(1));
             }
         });

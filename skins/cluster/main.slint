@@ -10,6 +10,7 @@ import { TopBar } from "top_bar.slint";
 import { NavBar } from "nav_bar.slint";
 import { Tile, TileState } from "tile.slint";
 import { Home } from "home.slint";
+import { CarPlayStrip } from "carplay_strip.slint";
 
 export enum TouchKind { down, move, up }
 
@@ -22,8 +23,12 @@ export component MainWindow inherits Window {
     background: Tokens.bg;
 
     in property <image> carplay-frame;
-    in property <bool> carplay-active: false;
+    in property <bool> carplay-connected: false;
+    in-out property <bool> carplay-shown: false;
     callback carplay-touch(TouchKind, float, float);
+
+    out property <length> carplay-width: root.width;
+    out property <length> carplay-height: root.height - Tokens.carplay-strip-h;
 
     VerticalLayout {
         padding-left: Tokens.pad-side;
@@ -44,17 +49,30 @@ export component MainWindow inherits Window {
         //navbar
         NavBar {
             active: 0;
+            carplay-available: root.carplay-connected;
+            carplay-tapped => {
+                root.carplay-shown = true;
+            }
         }
     }
 
-    if carplay-active: Rectangle {
+    if carplay-connected && carplay-shown: Rectangle {
         background: black;
-        
+
+        CarPlayStrip {
+            x: 0;
+            y: 0;
+            width: parent.width;
+            back => {
+                root.carplay-shown = false;
+            }
+        }
+
         Image {
             x: 0;
-            y: 40px;
-            width: parent.width;
-            height: parent.height - 40px;
+            y: Tokens.carplay-strip-h;
+            width: root.carplay-width;
+            height: root.carplay-height;
             source: carplay-frame;
             image-fit: fill;
 
@@ -72,6 +90,31 @@ export component MainWindow inherits Window {
                     root.carplay-touch(TouchKind.move, self.mouse-x / self.width, self.mouse-y / self.height);
                 }
             }
+        }
+
+        // iOS draws rounded corners into the video as black pixels. These two
+        // caps paint over the top ones in the strip's color, so the strip looks
+        // like it wraps around the video. Each is a square minus a quarter circle.
+        Path {
+            x: 0;
+            y: Tokens.carplay-strip-h;
+            width: Tokens.carplay-corner;
+            height: Tokens.carplay-corner;
+            viewbox-width: 1;
+            viewbox-height: 1;
+            commands: "M 0 0 L 1 0 A 1 1 0 0 0 0 1 Z";
+            fill: Tokens.bg;
+        }
+
+        Path {
+            x: parent.width - Tokens.carplay-corner;
+            y: Tokens.carplay-strip-h;
+            width: Tokens.carplay-corner;
+            height: Tokens.carplay-corner;
+            viewbox-width: 1;
+            viewbox-height: 1;
+            commands: "M 1 0 L 1 1 A 1 1 0 0 0 0 0 Z";
+            fill: Tokens.bg;
         }
     }
 }

@@ -20,7 +20,8 @@ Off-the-shelf stereos have bad interfaces outside of CarPlay, and their firmware
 - [x] CarPlay video live inside the UI, as a desk prototype ([details](docs/carplay.md))
 - [x] CarPlay touch: taps, drags and swipes, with a touchscreen or a mouse ([details](docs/carplay.md#touch))
 - [x] The real 7" touchscreen: the UI fills it, and CarPlay video comes in at its exact pixel size ([details](docs/pi-setup.md#7-connect-the-touchscreen))
-- [ ] CarPlay finished: audio, and switching to and from the other screens
+- [x] Switching between CarPlay and the home screen: a status strip with a back button, a CARPLAY button in the nav bar, and the video sized from the skin's layout ([details](docs/carplay.md#switching-between-carplay-and-home))
+- [ ] CarPlay finished: audio and the microphone
 - [ ] Bluetooth hands-free calls when CarPlay isn't running
 - [ ] Physical controls in place of the ashtray: a volume knob (click to pause, double click to skip, hold for Siri), a USB-C port, and a screen-off switch
 - [ ] Car power handling: ignition sense, safe shutdown, read-only root filesystem

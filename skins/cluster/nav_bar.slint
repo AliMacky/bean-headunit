@@ -2,6 +2,8 @@ import { Tokens } from "tokens.slint";
 
 export component NavBar inherits Rectangle {
     in property <int> active;
+    in property <bool> carplay-available;
+    callback carplay-tapped();
 
     height: Tokens.nav-h;
 
@@ -41,6 +43,14 @@ export component NavBar inherits Rectangle {
             border-radius: Tokens.radius;
             border-color: Tokens.accent;
             background: Tokens.accent;
+            opacity: root.carplay-available ? 1.0 : 0.4;
+
+            TouchArea {
+                enabled: root.carplay-available;
+                clicked => {
+                    root.carplay-tapped();
+                }
+            }
 
             Text {
                 font-size: Tokens.fs-button;

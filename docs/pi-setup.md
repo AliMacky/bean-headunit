@@ -186,7 +186,7 @@ sudo reboot
 
 The "8_0_inch" isn't a typo. It's the option Waveshare lists for this 7" panel. `sudo tee -a` appends to the file as root. `sudo echo ... >> file` wouldn't work, because the `>>` runs as you.
 
-DISP 0 works too, with `,dsi0` on the end of that line. Mine uses DISP 0, because I broke the latch on DISP 1. With the short cable that comes in the box, the cable has to twist a little to reach DISP 0 the right way round. That's fine on a desk, but in the car I'll use a longer Pi 5 display cable (200 mm) so it can loop loosely.
+DISP 0 works too, with `,dsi0` on the end of that line. Mine uses DISP 0, because I broke the latch on DISP 1. The short cable that comes in the box reaches DISP 0 fine. If it seems to need a twist, turn the cable end for end: one way round it has to twist, the other way it sits flat.
 
 ### Checking it
 

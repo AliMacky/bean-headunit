@@ -341,11 +341,24 @@ How a frame gets to the screen:
 1. A thread in `bean-ui` reads messages from the dongle and skips everything but video.
 2. `VideoDecoder` (`carplay/src/video.rs`) decodes the H.264 and converts it to RGB.
 3. The thread copies the frame into a `SharedPixelBuffer`, row by row because FFmpeg can pad each row, and posts it to the UI thread. An `Image` can only be made on the UI thread, but the buffer can cross between threads.
-4. The UI thread sets `carplay-frame` and `carplay-active`, and the skin draws the image over everything else, leaving 40 px at the top for a status strip.
+4. The UI thread sets `carplay-frame`, and the skin draws the image over everything else, under a 40 px status strip.
 
 If the UI falls behind, it skips to the newest frame instead of queueing them. `Latest` in `ui/src/main.rs` holds one frame and a flag saying whether the UI thread has been woken up for it. The decode thread replaces the frame and only wakes the UI if it isn't already waiting, so the picture can't lag further and further behind.
 
-The video size is asked for in physical pixels, to match the area it's drawn in exactly, so nothing gets stretched. On the 1280x800 screen at scale 1.25, that's the full 1280 width and 800 minus the 50-pixel status strip (40 units at 1.25), so 1280x750. At first I asked for 1024x560, which got stretched about 25% and looked noticeably softer than the rest of the UI. The size is hardcoded in `run_carplay` for now. It should come from the screen size and scale.
+The video size is asked for in physical pixels, to match the area it's drawn in exactly, so nothing gets stretched. On the 1280x800 screen at scale 1.25, that's the full 1280 width and 800 minus the 50-pixel status strip (40 units at 1.25), so 1280x750. At first I asked for 1024x560, which got stretched about 25% and looked noticeably softer than the rest of the UI.
+
+The skin decides where CarPlay goes. `MainWindow` has two `out` properties, `carplay-width` and `carplay-height`, and the `Image` uses them for its size. At the start of each session, `run_carplay` asks the UI thread for them (UI objects only live on that thread, so it sends a closure over and waits for the answer on a channel), multiplies by the scale factor, and rounds down to even numbers, since H.264 wants even sizes. So a different skin or a different screen gets the right size with no Rust changes. If the size can't be read, it falls back to 1280x750 and logs a warning.
+
+### Switching between CarPlay and Home
+
+CarPlay is one view inside the UI, and the phone stays connected while you're on other screens. Two properties control it:
+
+- `carplay-connected` is true while a session is sending video. Rust sets it on the first frame of a session and clears it when the session ends.
+- `carplay-shown` is true while the CarPlay view is on screen. Rust turns it on once per session, on the first frame, so CarPlay pops up when the phone connects. After that only the skin changes it: the back button in the strip turns it off, and the CARPLAY button in the nav bar turns it back on. The CARPLAY button is dimmed and ignores taps when there's no session.
+
+The strip (`skins/cluster/carplay_strip.slint`) has the back button, labeled with the car's title, and a few readouts from the core.
+
+iOS 26 draws rounded corners into the video itself, as black pixels. There's no setting for this that I know of. The bottom corners sit against the screen's black bezel, so they disappear. The top ones touch the strip, so the skin draws two small caps over them in the strip's color: a square with a quarter circle cut out, made with a `Path`. That makes the strip look like it wraps around the video. The radius is the `carplay-corner` token (39 px looked right on my screen). I tried clipping the video to a rounded rectangle first, but the FemtoVG renderer does a rounded clip by drawing everything inside it to an extra offscreen image every frame, which is a lot of work for four corners.
 
 ### Building with FFmpeg
 

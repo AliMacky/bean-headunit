@@ -1,0 +1,73 @@
+import { Tokens } from "tokens.slint";
+import { Car } from "car.slint";
+import { Settings } from "settings.slint";
+
+export component CarPlayStrip inherits Rectangle {
+    callback back();
+
+    property <int> water-shown: Settings.fahrenheit ? round(Car.water-c * 1.8 + 32) : Car.water-c;
+
+    height: Tokens.carplay-strip-h;
+    background: Tokens.bg;
+
+    HorizontalLayout {
+        padding-right: 16px;
+        spacing: 24px;
+
+        back := TouchArea {
+            min-width: 150px;
+            clicked => {
+                root.back();
+            }
+
+            HorizontalLayout {
+                padding-left: 14px;
+                padding-right: 14px;
+                spacing: 8px;
+                alignment: start;
+
+                Text {
+                    text: "‹";
+                    vertical-alignment: center;
+                    font-size: 26px;
+                    font-weight: 800;
+                    color: Tokens.accent;
+                }
+
+                Text {
+                    text: Settings.title;
+                    vertical-alignment: center;
+                    font-size: 18px;
+                    font-weight: 800;
+                    font-italic: true;
+                    letter-spacing: 2px;
+                    color: Tokens.accent;
+                }
+            }
+        }
+
+        Rectangle {
+            horizontal-stretch: 1;
+        }
+
+        Text {
+            text: "WATER " + (Car.water-known ? "\{root.water-shown}°" : "—");
+            vertical-alignment: center;
+            font-size: 18px;
+            color: Tokens.text-2;
+        }
+
+        Text {
+            text: "VOLTS " + (Car.volts-known ? Car.volts.to-fixed(1) : "—");
+            vertical-alignment: center;
+            font-size: 18px;
+            color: Tokens.text-2;
+        }
+    }
+
+    Rectangle {
+        y: parent.height - 1px;
+        height: 1px;
+        background: Tokens.line;
+    }
+}
