@@ -13,19 +13,33 @@ Off-the-shelf stereos have bad interfaces outside of CarPlay, and their firmware
 - [x] A shared data contract in Rust and a fake core that streams car data over a Unix socket ([details](docs/architecture.md))
 - [x] A first Slint UI window that shows live water temp and rpm from the core, and reconnects on its own when the core restarts ([details](docs/architecture.md#the-ui))
 - [x] The cluster skin's Home screen: design tokens, night and day themes, the Saira font, a top bar, a nav bar, and live water temp and volts ([details](docs/architecture.md#the-cluster-skin))
-- [x] Runs on the Pi without a desktop: the UI takes over from the splash at boot, as its own locked-down user, installed with one script ([details](docs/pi-setup.md#7-install-the-head-unit))
+- [x] Runs on the Pi without a desktop: the UI takes over from the splash at boot, as its own locked-down user, installed with one script ([details](docs/pi-setup.md#8-install-the-head-unit))
 - [ ] The other screens (Gauges, Trip, Codes, Setup), and tapping the nav bar to switch between them
 - [ ] The core: OBD2 over USB for live data and trouble codes, trip logging, warnings
 - [x] CarPlay proof of concept: my own Rust code starts a wireless session through a USB dongle and receives video that decodes cleanly ([details](docs/carplay.md))
 - [x] CarPlay video live inside the UI, as a desk prototype ([details](docs/carplay.md))
 - [x] CarPlay touch: taps, drags and swipes, with a touchscreen or a mouse ([details](docs/carplay.md#touch))
+- [x] The real 7" touchscreen: the UI fills it, and CarPlay video comes in at its exact pixel size ([details](docs/pi-setup.md#7-connect-the-touchscreen))
 - [ ] CarPlay finished: audio, and switching to and from the other screens
 - [ ] Bluetooth hands-free calls when CarPlay isn't running
 - [ ] Physical controls in place of the ashtray: a volume knob (click to pause, double click to skip, hold for Siri), a USB-C port, and a screen-off switch
 - [ ] Car power handling: ignition sense, safe shutdown, read-only root filesystem
 - [ ] Later: an ESP32 with its own sensors for data OBD can't give
 
-For now it sits on my desk on a 1440p display until the car is back and I can measure the dash for the real screen.
+For now it all runs on my desk, on the screen that's going in the car.
+
+## Hardware
+
+| Part | What it's for | Status |
+| --- | --- | --- |
+| Raspberry Pi 5 (8 GB) | Runs everything | In use |
+| [Waveshare 7" DSI LCD (E)](https://www.waveshare.com/wiki/7inch_DSI_LCD_(E)) | 1280x800 IPS touchscreen with optically bonded glass and 10-point touch. It will sit in a 3D printed frame inside the dash's wood trim opening | In use |
+| Carlinkit CPC200-CCPA | USB dongle for wireless CarPlay | In use |
+| Vgate vLinker FS USB, plus a right-angle OBD2 splitter cable | OBD2 data and trouble codes for the core. Tested on the car | Waiting on the core |
+| reSpeaker XVF3800 4-mic USB array | Calls and Siri, to be mounted behind the steering wheel | Not set up yet |
+| Analog backup camera | Reversing view | Not set up yet |
+
+Still to come: an ignition-aware power supply with safe shutdown, an amp feeding the car's factory speakers, and the knob and switches for the ashtray insert.
 
 ## How it fits together
 

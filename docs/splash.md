@@ -8,7 +8,7 @@ Everything on screen is text. The trees, stars, road, dust, and headlight beams 
 
 All the drawing happens ahead of time in `build_frames.py`, so the Pi doesn't do any image work at boot. `splash.py` just loads one file and prints text, which lets it start very early.
 
-It's installed by `system/install.sh`, see [step 7 of the setup guide](pi-setup.md#7-install-the-head-unit).
+It's installed by `system/install.sh`, see [step 8 of the setup guide](pi-setup.md#8-install-the-head-unit).
 
 ## Files
 

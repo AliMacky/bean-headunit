@@ -15,7 +15,7 @@ Measured with `systemd-analyze`, booting from a microSD card. The Pi 4 ran Bookw
 
 On the Pi 4, most of what was left was NetworkManager connecting to Wi-Fi, which nothing on screen waits for. On the Pi 5 that takes about 1.1 s, and the whole userspace boot fits in 3.4 s. Either way, the splash starts as soon as the filesystems are mounted, before the network is up.
 
-On the Pi 5, booting without the initramfs ([step 9](pi-setup.md#9-skip-the-initramfs-trixie)) brought the kernel phase from 1.4 s down to 0.7 s. The splash now starts about 2.7 s after the kernel does, compared to about 3.4 s before.
+On the Pi 5, booting without the initramfs ([step 10](pi-setup.md#10-skip-the-initramfs-trixie)) brought the kernel phase from 1.4 s down to 0.7 s. The splash now starts about 2.7 s after the kernel does, compared to about 3.4 s before.
 
 ## Power on to animation
 

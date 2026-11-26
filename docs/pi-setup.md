@@ -6,10 +6,12 @@ You'll need:
 
 - A Raspberry Pi 4 or 5, with its power supply
 - A microSD card (16 GB or more)
-- A screen with HDMI (and the right micro HDMI cable for the Pi)
+- A screen. I use the Waveshare 7" DSI LCD (E) touchscreen, which is what the UI is sized for (see [step 7](#7-connect-the-touchscreen)). Any HDMI screen works too, with the right micro HDMI cable
 - Another computer to flash the card and SSH in from
 
-On a Pi 5, use the official 5V 5A (27 W) USB-C supply. A weaker one still boots, but the Pi then limits USB devices to 600 mA in total, which isn't enough once a CarPlay dongle and audio are plugged in. Give it a cooler too, since it slows itself down when it gets hot. Plug the screen into the micro HDMI port next to the power port (HDMI0).
+On a Pi 5, use the official 5V 5A (27 W) USB-C supply. A weaker one still boots, but the Pi then limits USB devices to 600 mA in total, which isn't enough once a CarPlay dongle and audio are plugged in. Give it a cooler too, since it slows itself down when it gets hot. If you use an HDMI screen, plug it into the micro HDMI port next to the power port (HDMI0).
+
+Until the touchscreen is set up in step 7, you can do everything over SSH, or with an HDMI screen plugged in.
 
 ## 1. Flash the SD card
 
@@ -64,7 +66,7 @@ sudo apt install -y etckeeper
 sudo git -C /etc log --oneline        # should show an initial commit
 ```
 
-Steps 8 and 9 edit `/boot/firmware` instead of `/etc`, so give its two config files a small repo of their own:
+Steps 7, 9 and 10 edit `/boot/firmware` instead of `/etc`, so give its two config files a small repo of their own:
 
 ```
 cd /boot/firmware
@@ -154,7 +156,67 @@ To try the animation over SSH, play it once and exit (make your terminal window 
 SPLASH_ONCE=1 python3 ~/bean-headunit/splash/splash.py
 ```
 
-## 7. Install the head unit
+## 7. Connect the touchscreen
+
+The screen is a [Waveshare 7" DSI LCD (E)](https://www.waveshare.com/wiki/7inch_DSI_LCD_(E)): 1280x800, IPS, with optically bonded glass and 10-point capacitive touch. I picked it because it fits inside the dash's wood trim opening with thin borders. It connects with one ribbon cable, and the Pi screws onto its back.
+
+### How it connects
+
+- Picture: the DSI ribbon cable.
+- Touch: also through the ribbon. The touch controller (a Goodix chip) talks to the Pi over an I2C bus that runs inside the same cable, so there's no USB cable for touch.
+- Power: spring pins on the screen's board press against the solder points of the Pi's GPIO header from underneath. On a Pi 5 that's all the power it needs, so leave the 4-pin power cable in the box. It's only for Compute Module boards, or for a Pi that isn't mounted on the screen.
+
+### Putting it together
+
+Do all of this with the Pi powered off.
+
+1. Use the Pi 5 cable. The Pi 5's display ports are a smaller 22-pin connector than older Pis. The Pi 5 cable has a narrow end, which goes into the Pi, and a wider end, which goes into the screen. The other cable in the box is wide at both ends and is for a Pi 4.
+2. Get the cable the right way round at each end. Lift the connector's latch gently (they're fragile and snap easily), look into the slot, and see which side the metal pins are on. The cable's exposed gold contacts go against those pins. Push it in all the way and square, then press the latch down. If it's in backwards, nothing breaks, but the screen stays dark (see below).
+3. Mount the Pi with its underside against the screen: the CPU, cooler and USB ports face out, and the GPIO header sits right over the spring pins. The mounting holes let the Pi go on rotated 180 degrees, which puts the pins in the wrong place, so check before you put the screws in. Screw it down snugly so the pins press firmly.
+
+### Turning it on
+
+Waveshare's page says to use port DISP 1. Add this to the end of `config.txt`. Pi OS already has `dtoverlay=vc4-kms-v3d`, so don't add that one twice:
+
+```
+echo "dtoverlay=vc4-kms-dsi-waveshare-panel,8_0_inch" | sudo tee -a /boot/firmware/config.txt
+sudo git -C /boot/firmware commit -am "Add the Waveshare 7in DSI screen"
+sudo reboot
+```
+
+The "8_0_inch" isn't a typo. It's the option Waveshare lists for this 7" panel. `sudo tee -a` appends to the file as root. `sudo echo ... >> file` wouldn't work, because the `>>` runs as you.
+
+DISP 0 works too, with `,dsi0` on the end of that line. Mine uses DISP 0, because I broke the latch on DISP 1. With the short cable that comes in the box, the cable has to twist a little to reach DISP 0 the right way round. That's fine on a desk, but in the car I'll use a longer Pi 5 display cable (200 mm) so it can loop loosely.
+
+### Checking it
+
+```
+for f in /sys/class/drm/card*-*/status; do echo "$f: $(cat $f)"; done
+sudo dmesg | grep -E "Goodix|ws_touchscreen"
+grep "^N:" /proc/bus/input/devices
+```
+
+A working screen shows a `DSI` connector as `connected` (mine is `card1-DSI-1`), a dmesg line like `input: 10-0014 Goodix Capacitive TouchScreen`, and that name in the input device list.
+
+If the screen stays dark:
+
+- `connected` only means the overlay told the kernel a panel is there. It doesn't prove the panel is answering.
+- `-121` errors from `Goodix-TS` or `ws_touchscreen` mean nothing answered on the screen's I2C bus: the ribbon is in backwards or not seated, or the spring pins aren't touching the GPIO header. That was a backwards cable at the Pi end for me.
+- To look at the bus yourself: `sudo apt install -y i2c-tools` and `sudo modprobe i2c-dev`, then `i2cdetect -l` to list the buses (mine is bus 10, the one in the dmesg lines, as in `10-0014`), and `sudo i2cdetect -y 10`. A working screen shows `14` (touch) and `45` (the screen's control chip), or `UU` where a driver has already claimed one. All `--` means nothing is answering.
+
+### Brightness
+
+The backlight shows up in `/sys/class/backlight/`, as `10-0045` on mine. Its brightness is in `/sys/class/backlight/10-0045/brightness`, from 0 (off) to 255:
+
+```
+echo 128 | sudo tee /sys/class/backlight/10-0045/brightness
+```
+
+That's what the screen-off switch will use later.
+
+In step 8, set `SLINT_SCALE_FACTOR=1.25`. The UI is designed at 1024 units wide, so 1.25 makes it exactly 1280 pixels across.
+
+## 8. Install the head unit
 
 One script does the rest. Run it as your normal user, not with `sudo`. It asks for your password when it needs it.
 
@@ -183,7 +245,7 @@ sudo nano /etc/bean-headunit/bean.env
 | --- | --- | --- |
 | `BEAN_TITLE` | `MIATA` | Name in the UI's top bar |
 | `BEAN_UNITS` | `f` | `f` for °F, `c` for °C |
-| `SLINT_SCALE_FACTOR` | `1` | Scales the UI, which is designed for 1024x600. Around 1.8 fills a 1440p display |
+| `SLINT_SCALE_FACTOR` | `1` | Scales the UI, which is designed 1024 units wide. Use 1.25 for the 7" 1280x800 touchscreen, or around 1.8 for a 1440p display |
 | `SPLASH_TAGLINE` | `Mazda MX-5 Miata` | Line typed under the car on the splash |
 
 Any splash setting from [splash.md](splash.md#settings) can go here too.
@@ -206,7 +268,7 @@ cd ~/bean-headunit && git pull && system/install.sh --sim
 sudo systemctl restart bean-ui
 ```
 
-## 8. Hide the boot text
+## 9. Hide the boot text
 
 By default you see a rainbow square and a wall of kernel messages before the splash. This turns them off so the splash is the first thing on screen. `cmdline.txt` has to stay on a single line, which is why this uses `sed` instead of editing it by hand. The first command makes a backup.
 
@@ -218,7 +280,7 @@ sudo git -C /boot/firmware commit -am "Hide boot text"    # if you set up the re
 sudo reboot
 ```
 
-## 9. Skip the initramfs (Trixie)
+## 10. Skip the initramfs (Trixie)
 
 Pi OS Trixie boots through an initramfs, a small temporary system that runs before the real one. The Pi kernel already has the drivers it needs to mount the SD card, so it doesn't need one. Bookworm didn't use one either. Skipping it cuts the kernel phase about in half, starts the splash about 0.7 s sooner, and gets rid of the two `e2fsck` lines the initramfs prints over the boot screen.
 

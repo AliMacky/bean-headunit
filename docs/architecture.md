@@ -68,7 +68,7 @@ The socket lives at `/tmp/bean.sock` for now (`SOCKET_PATH`). On the Pi it will 
 
 ## The UI
 
-`bean-ui` opens a fixed 1024x600 window, the size of the 7" screen it's designed for. The look lives in `skins/cluster/`, which `ui/build.rs` compiles into Rust code that `main.rs` pulls in with `slint::include_modules!()`. The Rust side only talks to the skin through two globals, so it doesn't know or care how the screen is laid out.
+`bean-ui` is designed at 1024x600 logical pixels, and its window stretches to fill whatever screen it's on. On the 7" 1280x800 touchscreen at scale 1.25, that's 1024x640. The look lives in `skins/cluster/`, which `ui/build.rs` compiles into Rust code that `main.rs` pulls in with `slint::include_modules!()`. The Rust side only talks to the skin through two globals, so it doesn't know or care how the screen is laid out.
 
 It runs on two threads, plus two more for CarPlay when that's switched on, one reading and decoding and one writing to the dongle ([details](carplay.md#getting-it-on-screen)):
 
@@ -116,6 +116,8 @@ Some rules it follows, from the design:
 - Readings the contract doesn't have yet (intake, fuel, codes) show `—` in the greyed out "no data" state, not a made up number.
 - Warning thresholds belong to the core, so the UI doesn't decide when water is "hot". Tiles have warn and crit states, which get wired up when the core sends alerts.
 - Sizes are in Slint's logical pixels, so pixel density is handled by the scale factor. The content region stretches to whatever's left between the top bar and nav bar, so a taller screen just gives it more room.
+- The window uses `preferred-width` and `preferred-height`, not `width` and `height`. A fixed size can't grow, which left a 50-pixel strip at the bottom of the 1280x800 screen.
+- Layouts split space with `horizontal-stretch` (65 and 35 for Home's two columns, equal shares for the nav buttons) and `preferred-width: 0`, not with widths worked out from `root.width`. A layout works out its own size from its children, so children sized from the layout's width make a loop. Slint used to allow that loop, but now warns it may panic. Starting every child at 0 makes the stretch shares split all the space exactly.
 
 ## On the Pi
 

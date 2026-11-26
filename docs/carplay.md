@@ -2,19 +2,19 @@
 
 CarPlay comes from a Carlinkit CPC200-CCPA, a USB dongle with its own Wi-Fi and Bluetooth. The dongle handles the CarPlay connection with the phone. My code talks to the dongle over USB, sends it settings and touches, and gets back video, audio and status messages.
 
-So far, my Rust code can start a wireless CarPlay session with an iPhone and show the live video in `bean-ui`. It's a desk prototype, switched on with `BEAN_CARPLAY` and run as root. Touch works, so you can use CarPlay with a touchscreen or a mouse. There's no audio yet, and no way back to the Home screen without restarting.
+So far, my Rust code can start a wireless CarPlay session with an iPhone and show the live video in `bean-ui`, on the 7" 1280x800 touchscreen that's going in the car. It's a desk prototype, switched on with `BEAN_CARPLAY` and run as root. Touch works with a finger on the touchscreen, or with a mouse. There's no audio yet, and no way back to the Home screen without restarting.
 
 ## Trying it
 
-The dongle needs root until a udev rule gives the `bean` user access, so stop the normal UI and run it by hand. `SLINT_SCALE_FACTOR` here suits my 1080p desk display:
+The dongle needs root until a udev rule gives the `bean` user access, so stop the normal UI and run it by hand. `SLINT_SCALE_FACTOR=1.25` suits the 7" 1280x800 screen:
 
 ```
 cargo build --release -p bean-ui
 sudo systemctl stop bean-ui
-sudo SLINT_BACKEND=linuxkms SLINT_SCALE_FACTOR=1.8 BEAN_CARPLAY=1 ./target/release/bean-ui
+sudo SLINT_BACKEND=linuxkms SLINT_SCALE_FACTOR=1.25 BEAN_CARPLAY=1 ./target/release/bean-ui
 ```
 
-Video should take over the screen about 10 seconds after the phone connects. A mouse works for touch at a desk, and Slint draws a cursor. Press Ctrl-C when you're done, then run `sudo systemctl start bean-ui`.
+Video should take over the screen about 10 seconds after the phone connects. Touch it with a finger, or use a mouse, and Slint draws a cursor. If `bean-ui` is still running as a service, the new one fails with `Permission denied` when it tries to draw, because only one program can own the screen at a time. Press Ctrl-C when you're done, then run `sudo systemctl start bean-ui`.
 
 There's also a small test program that logs every message and saves the video to `/tmp/carplay.h264`:
 
@@ -120,9 +120,9 @@ Seven `u32`s, little-endian, identified only by their position:
 
 | Field | Value I send | Status |
 | --- | --- | --- |
-| width | 1024 | Seen: video comes back at this size |
-| height | 560 | Seen: video comes back at this size |
-| fps | 30 | Reference. Not confirmed, because video is sent mostly when the screen changes |
+| width | 1280 | Seen: video comes back at this size (1024 worked too) |
+| height | 750 | Seen: video comes back at this size, even though it isn't a multiple of 16 (560 worked too) |
+| fps | 30 | Reference. Asking for 60 still gave about 30 fps, so the phone or the dongle caps it |
 | format | 5 | Reference, meaning unknown |
 | packetMax | 49152 | Reference |
 | iBoxVersion | 2 | Reference |
@@ -148,7 +148,7 @@ A number is 4 little-endian bytes, and a boolean is the number 0 or 1. As far as
 Type `0x19` carries JSON in both directions. I send:
 
 ```json
-{"mediaDelay":300,"syncTime":1700000000,"androidAutoSizeW":1024,"androidAutoSizeH":560}
+{"mediaDelay":300,"syncTime":1700000000,"androidAutoSizeW":1280,"androidAutoSizeH":750}
 ```
 
 `syncTime` is the current Unix time in seconds.
@@ -320,7 +320,9 @@ With the video on screen in `bean-ui`, at 1024x560 on a 1080p display, CPU use o
 | Changing | 12 to 19% | About 7 fps |
 | Swiping between pages | 20 to 50% | About 17 to 22 fps |
 
-That fits a steady 30 fps costing roughly 65% of one core, which I still haven't measured directly, since the phone only sends frames while the screen moves. It's enough margin that I don't need to chase HEVC.
+That fits a steady 30 fps costing roughly 65% of one core.
+
+On the 7" screen, at 1280x750 (1.7 times the pixels), scrolling the map in Maps gave a steady 30 fps, and `top` showed `bean-ui` at about 70% of one core. That's the whole program, UI thread included. Decoding and converting a frame never took more than 25 ms, apart from the first frame of a session (38 ms). A frame comes every 33 ms at 30 fps, so there's still headroom, and it's enough margin that I don't need to chase HEVC. The Pi stayed around 60 °C with no throttling, even with its cooler off.
 
 FFmpeg warns `No accelerated colorspace conversion from yuv420p to rgb24`, so converting to RGB is probably a big part of that cost. If it becomes a problem, I'd try RGBA first, which may have a faster path, then sending the YUV frames to the GPU and converting them there. The `deprecated pixel format` warning is about how `yuvj420p` labels its color range, and shouldn't matter as long as colors look right.
 
@@ -341,10 +343,9 @@ How a frame gets to the screen:
 3. The thread copies the frame into a `SharedPixelBuffer`, row by row because FFmpeg can pad each row, and posts it to the UI thread. An `Image` can only be made on the UI thread, but the buffer can cross between threads.
 4. The UI thread sets `carplay-frame` and `carplay-active`, and the skin draws the image over everything else, leaving 40 px at the top for a status strip.
 
-Known limits of the prototype:
+If the UI falls behind, it skips to the newest frame instead of queueing them. `Latest` in `ui/src/main.rs` holds one frame and a flag saying whether the UI thread has been woken up for it. The decode thread replaces the frame and only wakes the UI if it isn't already waiting, so the picture can't lag further and further behind.
 
-- If the UI falls behind, frames queue up and the picture lags. It should keep only the newest frame.
-- The window is 1024 units wide, so on a screen with a different shape the background shows beside the video. That goes away on a 1024x600 screen at scale 1.
+The video size is asked for in physical pixels, to match the area it's drawn in exactly, so nothing gets stretched. On the 1280x800 screen at scale 1.25, that's the full 1280 width and 800 minus the 50-pixel status strip (40 units at 1.25), so 1280x750. At first I asked for 1024x560, which got stretched about 25% and looked noticeably softer than the rest of the UI. The size is hardcoded in `run_carplay` for now. It should come from the screen size and scale.
 
 ### Building with FFmpeg
 
@@ -382,7 +383,24 @@ Between sessions the UI holds no sender. When a session ends, every sender is dr
 
 On a still screen, the next video frame arrived about 120 to 200 ms after a touch. That covers USB, the dongle, Wi-Fi, the phone redrawing, and the frame coming back. That's normal for wireless CarPlay.
 
-At my desk it felt like 1 to 2 seconds, but the mouse cursor in the Home screen lagged just as much, and that never leaves the Pi. So the rest comes from my desk display, which goes through a capture card to an iPad, not from the head unit.
+At my desk it first felt like 1 to 2 seconds, but the mouse cursor in the Home screen lagged just as much, and that never leaves the Pi. That came from my old desk display, which went through a capture card to an iPad. On the real touchscreen it feels a little laggy, which matches the 120 to 200 ms.
+
+## Smoothness
+
+Scrolling and flinging in Maps is mostly smooth, with a short chop every 10 seconds or so. To find out where those come from, I logged three things for a while (since removed): any gap of 100 ms to 1 s between video messages, any frame that took over 25 ms to decode and convert, and how many frames `Latest` replaced before the UI drew them.
+
+Over about 40 seconds of constant scrolling, there were 2 to 7 gaps of 100 to 250 ms per run, and no slow frames apart from the first one. Dropped frames came in bursts right after a gap: the late frames arrive all at once, faster than 30 a second, and `Latest` skips ahead to the newest. So the chops start upstream, in the phone, the Wi-Fi link or the dongle. They don't come from decoding or drawing.
+
+What I tried:
+
+| Change | Result |
+| --- | --- |
+| Turning off the Pi's own Wi-Fi (on Ethernet) | About the same |
+| Moving the dongle from a USB 3 port to a USB 2 port on an extension cable, since USB 3 can interfere with 2.4 GHz radios | About the same |
+| Asking for 60 fps | Still about 30 fps |
+| Flinging and letting go, so no touches are being sent | Still chops, so it isn't the touch path |
+
+At this point it seems like a limit of wireless CarPlay through this dongle. It may be better in the car, with fewer Wi-Fi networks around and the phone a meter away. If it still bothers me there, the fix on my side would be a small buffer that holds frames for about 100 ms and plays them out evenly, at the cost of about 100 ms of extra touch delay.
 
 ## Open questions
 
@@ -392,7 +410,7 @@ At my desk it felt like 1 to 2 seconds, but the mouse cursor in the Home screen 
 - What do `format`, `iBoxVersion` and `phoneWorkMode` in Open do?
 - Can the dongle send HEVC?
 - Does the frame command do anything useful?
-- How does it cope with a real screen at a steady frame rate, and on a real drive? How much latency is left once the capture card is gone?
+- How does it behave on a real drive, with the phone in the car? Are the short stalls better or worse there?
 - What causes a stuck session, and how can the head unit recover without a replug?
 
 ## Credits
