@@ -104,8 +104,8 @@ fn send_touch(slot: &TouchSlot, kind: TouchKind, x: f32, y: f32) {
 
 fn run_carplay(window: slint::Weak<MainWindow>, slot: &TouchSlot) -> Result<(), String> {
     let config = Config {
-        width: 1024,
-        height: 560,
+        width: 1280,
+        height: 750,
         fps: 30,
     };
     let mut dongle = Dongle::connect(&config).map_err(|e| e.to_string())?;
